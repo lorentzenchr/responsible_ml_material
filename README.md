@@ -1,1 +1,1 @@
-# responsible_ml_material
+# Material for the lecture Responsible ML
