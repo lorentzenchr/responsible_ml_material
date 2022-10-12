@@ -61,10 +61,12 @@ The third chapter, "Improving Explainability", takes a different path. Here we e
 
 # Notation
 
-Throughout the XAI notebooks, we consider a typical modeling situation: a distributional property $T(Y\mid \boldsymbol x)$ of a response variable $Y$ with values in $\mathbb R$ should be approximated by a model $m: \boldsymbol x\in \mathbb R^p \mapsto \mathbb R$ of a $p$-dimensional feature vector $\boldsymbol x = (x^{(1)}, \dots, x^{(p)})^T$, i.e.,
+Throughout the XAI notebooks, we consider a typical modeling situation: a distributional property $T$ of a real-valued response variable $Y$ should be approximated by a model $m: \boldsymbol x \in \mathbb R^p \mapsto \mathbb R$ of a $p$-dimensional feature vector $\boldsymbol X = (X^{(1)}, \dots, X^{(p)})^T$ with value $\boldsymbol x = (x^{(1)}, \dots, x^{(p)})^T \in \mathbb R^p$, i.e.,
 $$
-  T(Y\mid \boldsymbol x) \approx m(\boldsymbol x).
+  T(Y\mid \boldsymbol X = \boldsymbol x) \approx m(\boldsymbol x).
 $$
+For brevity, we write $T(Y\mid \boldsymbol X = \boldsymbol x) = T(Y\mid \boldsymbol x)$.
+
 Examples of $T$ are the expectation $T =\mathbb E$, or a quantile $q_\alpha$. The model $m$ is then estimated by $\hat m$ from the training data by minimizing some objective criterion typically of the form
 $$
   \frac{1}{\sum_{i = 1}^n w_i} \sum_{i = 1}^n w_i L(\hat y_i, y_i) + \lambda \Omega(m),
@@ -74,7 +76,7 @@ where
 - $L$ is a loss function (sometimes called "scoring function") ideally strictly consistent for $T$, e.g., the squared error $L(z, y) = (y - z)^2$,
 - $1 \le i \le n$ are the observations in the dataset considered,
 - $\lambda \Omega(m)$ is an optional penalty to reduce overfitting,
-- $\boldsymbol w = (w_1, \dots, w_n)^T$ is the vector of (optional) case weights of the $n$ observations ($w_i = 1$ if there are no such case weights),
+- $\boldsymbol w = (w_1, \dots, w_n)^T$ is the vector of (optional) non-negative case weights of the $n$ observations ($w_i = 1$ if there are no such case weights),
 - $\boldsymbol y = (y_1, \dots, y_n)^T$ are the $n$ observed values of $Y$,
 - $\boldsymbol{\hat y} = (\hat y_1, \dots, \hat y_n)^T$ is the vector of predicted or fitted values, i.e., $\hat y_i = \hat m(\boldsymbol x_i)$,
 - $\boldsymbol x_1, \dots, \boldsymbol x_n$ are the feature vectors corresponding to the $n$ observations. Consequently, $x_i^{(j)}$ denotes the value of the $j$-th feature of the $i$-th observation.
@@ -118,7 +120,7 @@ An important extension of the GLM is the generalized additive model [@hastie1986
 $$
   \mathbb E(Y \mid \boldsymbol x) = m(\boldsymbol x) = g^{-1}(\beta_o + f_1(x^{(1)}) + \dots + f_p(x^{(p)}))
 $$
-for sufficiently nice functions $f_j$ describing the Ceteris Paribus effect of $x^{(j)}$ on $g(\mathbb E(Y \mid \boldsymbol x))$, and $\beta_o$ is the intercept.
+for sufficiently nice functions $f_j$ describing the Ceteris Paribus effect of feature $X^{(j)}$ on $g(\mathbb E(Y \mid \boldsymbol x))$, and $\beta_o$ is the intercept.
 As functions $f_j$, often penalized regression smooths are used that are then being estimated to minimize the distribution specific average deviance. The functions $f_j$ are usually zero-centered to uniquely define them. Some of the components $f_j$ can also be fully parametric, just like in a GLM.
 
 GAMs and GLMs can also contain interaction terms, i.e., components that depend on more than one covariate.
@@ -144,7 +146,7 @@ Slightly adapting the notation of @wuethrich2021, we use the following terms to 
 - $C / w$: Pure premium.
 - $Y = N / w$: The claims frequency, i.e., the number of claims per exposure.
 - $Z = C / N$: The claims severity, i.e., the average cost per claim (undefined if $N = 0$).
-- $\boldsymbol x$: One or more risk characteristics describing the policy.
+- $\boldsymbol X$: One or more risk characteristics describing the policy.
 
 Observed values for two fictive motor third-part liability (MTPL) policies could look like this:
 
@@ -170,7 +172,7 @@ $$
 $$
 classically a Gamma GLM with log link and case weights $N$, using only rows with $N>0$.
 
-Assuming independence of $Y$ and $Z$ conditional on $\boldsymbol x$, the combined model for the pure premium is then given by the product of the two models, i.e., by 
+Assuming conditional independence of $Y$ and $Z$, the combined model for the pure premium is then given by the product of the two models, i.e., by 
 $$
   \mathbb E(C / w \mid \boldsymbol x) \approx m_Y(\boldsymbol x)  m_Z(\boldsymbol x).
 $$
@@ -187,7 +189,7 @@ $$
 $$
 calculated on the training data.
 - In R, when modeling claim frequencies with GLMs or GAMs, we will use the distribution family `quasipoisson`. This (a) suppresses a warning on non-integer responses and (b) allows for overdispersion. It provides the same parameter estimates as the `poisson` family.
-- Instead of fitting a Poisson model for claims frequency using case weights $w$, one can alternatively model the claim counts $N$ by a Poisson model without case weights but using an offset of $\log(w)$. Such a model will predict expected claim counts rather than expected claim frequencies. Nevertheless, the fitted coefficients will be identical between the two variants.
+- Instead of fitting a Poisson model for claims frequency using case weights $w$, one can alternatively model the claim counts $N$ by a Poisson model without case weights but using an offset of $\log(w)$. Such a model will predict expected claim counts rather than expected claim frequencies. Nevertheless, the estimated effects will be identical between the two variants.
 
 # Main Example
 
@@ -212,7 +214,7 @@ library(farff)
 main <- "french_motor"
 # main <- "r/french_motor"
 fillc <- "#E69F00"
-refit <- TRUE # Set to FALSE after the first run
+refit <- TRUE  # Set to FALSE after first run
 
 if (refit) {
   # Download and save dataset
@@ -266,10 +268,8 @@ head(prep[, c("IDpol", "group_id", "ClaimNb", x, w, y)], 8)
 summary(prep[, c(x, w, y)])
 
 # Histograms
-prep %>% 
-  select(
-    all_of(c("Freq", "Exposure", "DrivAge", "VehAge", "VehPower", "logDensity"))
-  ) %>% 
+prep %>%
+  select_at(c("Freq", "Exposure", "DrivAge", "VehAge", "VehPower", "logDensity")) %>% 
   pivot_longer(everything()) %>% 
 ggplot(aes(x = value)) +
   geom_histogram(bins = 19, fill = fillc) +
@@ -277,7 +277,7 @@ ggplot(aes(x = value)) +
   ggtitle("Histograms of numeric columns")
 
 # Barplots
-p <- c("ClaimNb", "VehBrand", "VehGas", "PolicyRegion") %>% 
+c("ClaimNb", "VehBrand", "VehGas", "PolicyRegion") %>% 
   lapply(function(v) ggplot(prep, aes_string(v)) + geom_bar(fill = fillc)) %>% 
   grid.arrange(grobs = ., top = "Barplots of discrete columns")
 ```
@@ -375,7 +375,7 @@ if (refit) {
 
 - Fitting a GAM on 540k rows of data takes comparably long.
 - The code required to fit the boosted trees model is much longer than for the GLM and the GAM. However, the code is very general, so that only minor adaptions need to be made for other modeling situations.
-- Interpreting the GLM and the GAM can be easily made from the model output. For example, for the GLM, a one-point increase in "DrivAge" is associated with a change in log expected claims frequency of -0.0051. On the frequency scale, this corresponds to a change of $100\% \cdot (e^{-0.0051} - 1) \approx -0.5\%$. The GAM shows a more complex (and realistic) age effect. For the GLM and the GAM, the test statistics give us an indication of the variable importance: Vehicle age and driver age appear to be among the strongest predictors. What about the boosted trees model? It will be one of the goals of the next chapter to fill this gap using the tools of XAI.
+- Interpreting the GLM and the GAM can be easily made from the model output. For example, for the GLM, a one-point increase in "DrivAge" is associated with a change in log expected claims frequency of $-0.0051$. On the frequency scale, this corresponds to a change of $100\% \cdot (e^{-0.0051} - 1) \approx -0.5\%$. The GAM shows a more complex (and realistic) age effect. For the GLM and the GAM, the test statistics give us an indication of the variable importance: Vehicle age and driver age appear to be among the strongest predictors. What about the boosted trees model? It will be one of the goals of the next chapter to fill this gap using the tools of XAI.
 
 # Exercises
 

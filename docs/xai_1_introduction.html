@@ -3010,10 +3010,11 @@ forcing parts of the model to be additive and/or monotonic.</p>
 <h1><span class="header-section-number">4</span> Notation</h1>
 <p>Throughout the XAI notebooks, we consider a typical modeling
 situation: a distributional property <span class="math inline">T</span>
-of a response variable <span class="math inline">Y</span> should be
-approximated by a model <span class="math inline">m: \boldsymbol x\in
-\mathbb R^p \mapsto \mathbb R</span> of a <span class="math inline">p</span>-dimensional feature vector <span class="math inline">\boldsymbol X</span> with value <span class="math inline">\boldsymbol x = (x^{(1)}, \dots, x^{(p)})^T</span>,
-i.e., <span class="math display">
+of a real-valued response variable <span class="math inline">Y</span>
+should be approximated by a model <span class="math inline">m:
+\boldsymbol x \in \mathbb R^p \mapsto \mathbb R</span> of a <span class="math inline">p</span>-dimensional feature vector <span class="math inline">\boldsymbol X = (X^{(1)}, \dots, X^{(p)})^T</span>
+with value <span class="math inline">\boldsymbol x = (x^{(1)}, \dots,
+x^{(p)})^T \in \mathbb R^p</span>, i.e., <span class="math display">
   T(Y\mid \boldsymbol X = \boldsymbol x) \approx m(\boldsymbol x).
 </span> For brevity, we write <span class="math inline">T(Y\mid
 \boldsymbol X = \boldsymbol x) = T(Y\mid \boldsymbol x)</span>.</p>
@@ -3031,7 +3032,7 @@ in the dataset considered,</li>
 <li><span class="math inline">\lambda \Omega(m)</span> is an optional
 penalty to reduce overfitting,</li>
 <li><span class="math inline">\boldsymbol w = (w_1, \dots, w_n)^T</span>
-is the vector of (optional) case weights of the <span class="math inline">n</span> observations (<span class="math inline">w_i
+is the vector of (optional) non-negative case weights of the <span class="math inline">n</span> observations (<span class="math inline">w_i
 = 1</span> if there are no such case weights),</li>
 <li><span class="math inline">\boldsymbol y = (y_1, \dots, y_n)^T</span>
 are the <span class="math inline">n</span> observed values of <span class="math inline">Y</span>,</li>
@@ -3094,7 +3095,7 @@ model equation is assumed to satisfy <span class="math display">
   \mathbb E(Y \mid \boldsymbol x) = m(\boldsymbol x) = g^{-1}(\beta_o +
 f_1(x^{(1)}) + \dots + f_p(x^{(p)}))
 </span> for sufficiently nice functions <span class="math inline">f_j</span> describing the Ceteris Paribus effect of
-<span class="math inline">x^{(j)}</span> on <span class="math inline">g(\mathbb E(Y \mid \boldsymbol x))</span>, and <span class="math inline">\beta_o</span> is the intercept. As functions <span class="math inline">f_j</span>, often penalized regression smooths are
+feature <span class="math inline">X^{(j)}</span> on <span class="math inline">g(\mathbb E(Y \mid \boldsymbol x))</span>, and <span class="math inline">\beta_o</span> is the intercept. As functions <span class="math inline">f_j</span>, often penalized regression smooths are
 used that are then being estimated to minimize the distribution specific
 average deviance. The functions <span class="math inline">f_j</span> are
 usually zero-centered to uniquely define them. Some of the components
@@ -3146,7 +3147,7 @@ quantities will refer to this.</li>
 i.e., the number of claims per exposure.</li>
 <li><span class="math inline">Z = C / N</span>: The claims severity,
 i.e., the average cost per claim (undefined if <span class="math inline">N = 0</span>).</li>
-<li><span class="math inline">\boldsymbol x</span>: One or more risk
+<li><span class="math inline">\boldsymbol X</span>: One or more risk
 characteristics describing the policy.</li>
 </ul>
 <p>Observed values for two fictive motor third-part liability (MTPL)
@@ -3224,9 +3225,9 @@ premium into a product of frequency and severity <span class="math display">
 </span> classically a Poisson GLM with log link and case weights <span class="math inline">w</span>; and another one for the severity <span class="math display">
   \mathbb E(Z \mid \boldsymbol x) \approx m_Z(\boldsymbol x),
 </span> classically a Gamma GLM with log link and case weights <span class="math inline">N</span>, using only rows with <span class="math inline">N&gt;0</span>.</p>
-<p>Assuming independence of <span class="math inline">Y</span> and <span class="math inline">Z</span> conditional on <span class="math inline">\boldsymbol x</span>, the combined model for the
-pure premium is then given by the product of the two models, i.e., by
-<span class="math display">
+<p>Assuming conditional independence of <span class="math inline">Y</span> and <span class="math inline">Z</span>, the
+combined model for the pure premium is then given by the product of the
+two models, i.e., by <span class="math display">
   \mathbb E(C / w \mid \boldsymbol x) \approx m_Y(\boldsymbol
 x)  m_Z(\boldsymbol x).
 </span> The GLMs can be replaced by corresponding GAMs or modern ML

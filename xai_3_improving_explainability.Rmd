@@ -78,7 +78,7 @@ library(deepviz)
 # Reload data and model-related objects
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
-refit <- TRUE # Set to FALSE after frist run
+refit <- TRUE  # Set to FALSE after first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -166,9 +166,9 @@ The first approach produces additive models. The second approach is more general
 
 ## Additive boosted trees
 
-A *tree stump* is a decision tree with a single split. Its prediction function has the form $v_1 + (v_2 - v_1)\mathbb I(x^{(j)} \le s)$, where $\mathbb I$ is the indicator function, $s$ the split value of the selected variable $x^{(j)}$, and $v_1, v_2$ are the values of the left and right leaf. A boosted trees model with tree stumps as base learners (boosted tree stumps) is thus an additive model
+A *tree stump* is a decision tree with a single split. Its prediction function has the form $v_1 + (v_2 - v_1)\mathbb I(x^{(j)} \le s)$, where $\mathbb I$ is the indicator function, $s$ the split position of the selected variable $X^{(j)}$, and $v_1, v_2$ are the values of the left and right leaf. A boosted trees model with tree stumps as base learners (boosted tree stumps) is thus an additive model
 $$
-  m(\boldsymbol x) = \beta_o + f_1(x^{(1)}) + \dots + f_p(x^{(p)}),
+  m(\boldsymbol x) = \beta_o + f_1(x^{(1)}) + \dots + f_p(x^{(p)})
 $$
 with piecewise constant functions $f_j$, $1 \le j \le p$. A schematic view of such a model for our French MTPL dataset could look as follows:
 
@@ -249,7 +249,7 @@ where each $F_m \subseteq \mathcal M$ defines a feature subset allowed to intera
 
 How do interaction constraints work technically? During tree growth, a split considers features only from those $F_m$ that contain all previous split variables of the branch. Consequently, each branch in each tree will only use features from one $F_m \in IC$. This implies the desired structure for the tree and also for a tree ensemble.
 
-Interaction constraints can be used to create partly additive boosted trees models. For instance, to have a model additive in $x^{(j)}$, we need to set $F_m = \{x^{(j)}\}$, and make sure that $x^{(j)} \notin F_k, \ k \ne m$.
+Interaction constraints can be used to create partly additive boosted trees models. For instance, to have a model additive in feature $X^{(j)}$, we need to set $F_m = \{X^{(j)}\}$, and make sure that $X^{(j)} \notin F_k, \ k \ne m$.
 
 The following scheme shows a partly additive model with interaction constraints
 $$
@@ -262,7 +262,7 @@ The resulting model will be additive in driver-related features while allowing v
 Remarks: 
 
 - If all elements in $IC$ are disjoint, each tree uses features from only one $F_m$. (The first split variable determines which of the $F_m$.)
-- As an alternative to boosted tree stumps, we can specify $IC = \{\{x^{(1)}\}, \dots, \{x^{(p)}\}\}$ to create an additive boosted trees model, see the figure below.
+- As an alternative to boosted tree stumps, we can specify $IC = \{\{X^{(1)}\}, \dots, \{X^{(p)}\}\}$ to create an additive boosted trees model, see the figure below.
 
 ![Additive boosted trees via interaction constraints](figs/tree_additive_ic.png)
 
@@ -418,7 +418,7 @@ The weights are the parameters estimated by *gradient descent*. Normally, the gr
 Remarks:
 
 - Step 5 can be specified by an early-stopping *callback*. A callback is an action executed during training. An other callback would be to save the parameters after each epoch.
-- To improve convergence, input variables should be on a comparable scale. We will standardize them accordingly by subtracting their (training) mean and then dividing by the (training) standard deviation. Alternatively, we could scale the values of each feature so that they range from 0 to 1 (min-max scaling) or from $-1$ to 1.
+- To improve convergence, input variables should be on a comparable scale. We will standardize them accordingly by subtracting their (training) mean and then dividing by the (training) standard deviation. Alternatively, we could scale the values of each feature so that they range from $0$ to $1$ (min-max scaling) or from $-1$ to $1$.
 
 ### Example: a GLM neural net
 
@@ -579,7 +579,7 @@ summary_model( # 4.27%
 
 ## Additive neural nets
 
-In the first two examples on neural nets we have seen that we can use them to fit linear additive models as well as a typical black box. Thanks to the flexibility of neural networks, we can also use them to build GAMs. In such a "neural additive model" [@agarwal2020], each feature $x^{(j)}$ is sent through a small single-output neural network that represents $x^{(j)}$ as a non-linear smooth function. The outputs of these sub-networks are then directly connected to the output node to avoid interaction effects, see Scheme 5 (a):
+In the first two examples on neural nets we have seen that we can use them to fit linear additive models as well as a typical black box. Thanks to the flexibility of neural networks, we can also use them to build GAMs. In such a "neural additive model" [@agarwal2020], each feature $X^{(j)}$ is sent through a small single-output neural network that represents $X^{(j)}$ as a non-linear smooth function. The outputs of these sub-networks are then directly connected to the output node to avoid interaction effects, see Scheme 5 (a):
 
 ![Scheme 5: (a) Neural additive model, (b) partly additive neural net, source: Figure 1 in https://www.mdpi.com/1911-8074/15/5/193](https://www.mdpi.com/jrfm/jrfm-15-00193/article_deploy/html/images/jrfm-15-00193-g001.png)
 
