@@ -208,7 +208,7 @@ The first R script of this notebook performs the following steps:
 ```{r}
 library(tidyverse)
 library(gridExtra)
-library(OpenML)
+library(OpenML)   # devtools::install_github("openml/openml-r")
 library(farff)
 
 main <- "french_motor"
