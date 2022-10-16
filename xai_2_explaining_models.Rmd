@@ -313,7 +313,7 @@ for (prop in dims$prop) {
     if (splittype == "random") {
       ix <- (1:n_) %in% sample(1:n_, n_ * 0.8)
     } else {
-      ix <- df_$group %in% sample(df_$group, n * 0.8)
+      ix <- df_$group %in% sample(1:n, n * 0.8)
     }
     df_train <- df_[ix, ]
     df_valid <- df_[!ix, ]
