@@ -78,7 +78,7 @@ library(deepviz)
 # Reload data and model-related objects
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
-refit <- TRUE  # Set to FALSE after first run
+refit <- TRUE  # Set to FALSE after the first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -409,11 +409,20 @@ The weights are the parameters estimated by *gradient descent*. Normally, the gr
 
 (Mini-batch) gradient descent with backpropagation works as follows: 
 
-1. Initialization: Parameters are randomly initialized.
-2. Forward step: Using the current parameter estimates, the predictions of a *batch* (= a subset) of observations are calculated and their (total) loss is calculated.
-3. Backward step: The parameters are modified in the direction of the negative gradient of the loss in order to make the loss on that batch systematically smaller.
-4. Steps 2 and 3 are iterated, until each observation in the training data has been used once. This is called an *epoch*.
-5. Step 4 is iterated several times, e.g., until the validation loss no longer improves. 
+1. Initialize the parameter vector $\beta$ with random values $\hat \beta$. 
+2. Forward step: Use $\hat \beta$ to calculate predictions $\hat y_1, \dots, \hat y_K$ of all $K$ observations in a *batch*. A batch is a small subset of the training data.
+3. Backpropagation step: Modify $\hat \beta$ to improve the total loss $S(\hat\beta, D) = \sum_{i = 1}^K L(\hat y_i, y_i)$ on the batch for the given loss function $L$ (e.g., the squared error). This is done by gradient descent: Calculate the vector of partial derivatives
+$$
+  \nabla \hat \beta = \frac{\partial S(\beta, D)}{\partial \beta}\large\mid_{\beta = \hat \beta}
+$$
+at the current estimate $\hat \beta$. Use it to update
+$$
+  \hat \beta \leftarrow \hat \beta  - \lambda \nabla \hat \beta,
+$$
+where $\lambda > 0$ is the learning rate chosen to be small enough to improve $S$. In neural nets, parameters are organized in multiple layers, which makes it difficult to calculate $\nabla \hat\beta$. This is where backpropagation enters the game: It calculates the partial derivatives layer per layer using the chain rule, starting from the output layer.
+4. Repeat Steps 2 and 3 until each observation appeared in a batch. This is called an *epoch*.
+5. Repeat Step 4 for multiple epochs, usually until $\hat \beta$ stabilizes or validation performance stops improving.
+
 
 Remarks:
 
