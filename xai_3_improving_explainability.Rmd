@@ -78,7 +78,7 @@ library(deepviz)
 # Reload data and model-related objects
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
-refit <- TRUE  # Set to FALSE after the first run
+refit <- TRUE  # Set to FALSE after first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -407,22 +407,27 @@ To familiarize ourselves with Keras and review some neural network terminology, 
 
 The weights are the parameters estimated by *gradient descent*. Normally, the gradient descent update steps are computed by backpropagation, which involves applying the chain rule to find the derivatives of the loss function with respect to all parameters. For a simple model like a GLM, this is straightforward. But imagine a deep learning model with 50 hidden layers and a non-linear transformation after each hidden layer! Computing millions or even billions of derivatives (without seeing the data) is one of the greatest achievements of modern deep learning implementations like TensorFlow and PyTorch.
 
-(Mini-batch) gradient descent with backpropagation works as follows: 
+**(Mini-batch) gradient descent with backpropagation works as follows:**
 
-1. Initialize the parameter vector $\beta$ with random values $\hat \beta$. 
-2. Forward step: Use $\hat \beta$ to calculate predictions $\hat y_1, \dots, \hat y_K$ of all $K$ observations in a *batch*. A batch is a small subset of the training data.
-3. Backpropagation step: Modify $\hat \beta$ to improve the total loss $S(\hat\beta, D) = \sum_{i = 1}^K L(\hat y_i, y_i)$ on the batch for the given loss function $L$ (e.g., the squared error). This is done by gradient descent: Calculate the vector of partial derivatives
+Let $m_\beta$ denote a neural net with parameters $\beta$, and 
 $$
-  \nabla \hat \beta = \frac{\partial S(\beta, D)}{\partial \beta}\large\mid_{\beta = \hat \beta}
+  Q(m_\beta, D) = \sum_{(y_i, \boldsymbol x_i) \in D} L(m_\beta(\boldsymbol x_i), y_i)
+$$ 
+its total loss on a data set $D$ with respect to the loss function $L$.
+
+1. Initialize the parameter vector $\beta$ with random values $\hat \beta$.
+2. Forward step: Calculate $Q(m_{\hat\beta}, D_\text{batch})$ on a *batch* $D_\text{batch}$ of observations. This is a small subset of the training data.
+3. Backpropagation step: Modify $\hat \beta$ to improve $Q(m_{\hat\beta}, D_\text{batch})$ by gradient descent: Calculate the vector of partial derivatives
 $$
-at the current estimate $\hat \beta$. Use it to update
+  \nabla \hat \beta = \frac{\partial Q(m_\beta, D_\text{batch})}{\partial \beta}\large\mid_{\beta = \hat \beta}
+$$
+at the current estimates $\hat \beta$. Use it to update
 $$
   \hat \beta \leftarrow \hat \beta  - \lambda \nabla \hat \beta,
 $$
-where $\lambda > 0$ is the learning rate chosen to be small enough to improve $S$. In neural nets, parameters are organized in multiple layers, which makes it difficult to calculate $\nabla \hat\beta$. This is where backpropagation enters the game: It calculates the partial derivatives layer per layer using the chain rule, starting from the output layer.
+where $\lambda > 0$ is a sufficiently small learning rate. In neural nets, parameters are organized in multiple layers, which makes it difficult to calculate $\nabla \hat\beta$. This is where backpropagation enters the game: It calculates the partial derivatives layer per layer using the chain rule, starting from the output layer.
 4. Repeat Steps 2 and 3 until each observation appeared in a batch. This is called an *epoch*.
-5. Repeat Step 4 for multiple epochs, usually until $\hat \beta$ stabilizes or validation performance stops improving.
-
+5. Repeat Step 4 for multiple epochs until some stopping criterion triggers.
 
 Remarks:
 
@@ -431,7 +436,7 @@ Remarks:
 
 ### Example: a GLM neural net
 
-Let us now fit a claims frequency GLM with Keras/TensorFlow, i.e., the model in Scheme 4 (a). For simplicity, we encode factor variables like "VehAge" by integers, even if this does not make too much sense (see later examples how to create better models). We use a learning rate of 0.02. This means that each parameter update takes 0.02 steps towards the negative gradient.
+Let us now fit a claims frequency GLM with Keras/TensorFlow, i.e., the model in Scheme 4 (a). For simplicity, we encode all factor variables as integers, even if this is not always intelligent (see later examples how to create better models). We use a learning rate of 0.02. This means that each parameter update takes 0.02 steps towards the negative gradient.
 
 ```{r}
 # bug with case weights: https://github.com/rstudio/keras/issues/1341
@@ -521,7 +526,7 @@ summary_model(                              # 0.95
 
 While it is great that a neural network can be used to fit a GLM, its strength lies in its *hidden layers*. The nodes on these hidden layers are latent variables that represent the original input features in a way that optimally predicts the response. The closer a hidden layer is to the output, the more optimal this representation is. This is referred to as *representational learning*: The neural network automatically learns relevant nonlinearities and interaction effects that would have to be added manually in a GLM. For this to work, you need a sufficiently flexible architecture (the layers and their nodes) and enough observations. 
 
-An important component are the *activation functions* placed after each hidden layer. They transform the weighted sum of each hidden node non-linearly, thus introducing interaction effects. Typical activation functions are the rectangular linear unit $ReLU(x) = \text{max}(0, x)$, the inverse logistic function ("sigmoid") and the nearly identical hyperbolic tangent. The activation function applied to the output node has a different purpose: it maps the network output to the scale of the response, just like the inverse link function in a GLM. A neural network without activation functions could only represent a linear function of the inputs, regardless of how many hidden layers the model has (why?).
+An important component are the *activation functions* placed after each hidden layer. They transform the weighted sum of each hidden node non-linearly, thus introducing interaction effects. Typical activation functions are the rectangular linear unit $ReLU(x) = \text{max}(0, x)$, the standard logistic function ("sigmoid") and the nearly identical hyperbolic tangent. The activation function applied to the output node has a different purpose: it maps the network output to the scale of the response, just like the inverse link function in a GLM. A neural network without activation functions could only represent a linear function of the inputs, regardless of how many hidden layers the model has (why?).
 
 ### Example: A "complex" neural net
 
