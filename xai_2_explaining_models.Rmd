@@ -67,7 +67,7 @@ library(flashlight)
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
 reload <- TRUE
-refit <- TRUE  # Set to FALSE after first run
+refit <- TRUE  # Set to FALSE after the first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -854,7 +854,7 @@ $$
   v(\mathcal L) = m(\mathbf x_\mathcal L),
 $$
 where $\mathbf x_\mathcal L$ represents the components in the feature subset $\mathcal L \subseteq \mathcal M$ selected from the full feature set $\mathcal M$. 
-Since models cannot simply "turn off" some features during prediction, the estimation of $m(\mathbf x_\mathcal L)$ is highly non-trivial, and there is some controversy (see e.g., @sundararajan2019 or @janzing2020) whether to approximate it using marginal expectations $\mathbb E_{\mathbf X_{\mathcal M \setminus \mathcal L}}(m(\boldsymbol X))$ or conditional expectations $\mathbb E(m(\boldsymbol X \mid \mathbf x_\mathcal L))$. The core question is: should the statistical dependency between features in $\mathcal L$ and features in $\mathcal M \setminus \mathcal L$ be broken (marginal) or not (conditional)? The rules of causal inference require the former, while statistically, the latter would be more natural.
+Since models cannot simply "turn off" some features during prediction, the estimation of $m(\mathbf x_\mathcal L)$ is highly non-trivial, and there is some controversy (see e.g., @sundararajan2019 or @janzing2020) whether to approximate it using marginal expectations $\mathbb E_{\mathbf X_{\mathcal M \setminus \mathcal L}}(m(\boldsymbol X))$ or conditional expectations $\mathbb E(m(\boldsymbol X \mid \mathbf x_\mathcal L))$. The core question is: should the statistical dependence between features in $\mathcal L$ and features in $\mathcal M \setminus \mathcal L$ be broken (marginal) or not (conditional)? The rules of causal inference require the former, while statistically, the latter would be more natural.
 
 There exist several algorithms to calculate SHAP values for an observation $\mathbf x$. Three particularly important ones are the following (from very slow to very fast):
 
@@ -987,7 +987,7 @@ At least two approaches are common to study interaction effects using SHAP:
 
 1. SHAP interactions: SHAP decomposes a prediction into additive contributions of each feature. In the same vein, @lundberg2020 introduced *SHAP interactions*, which decompose a prediction into additive contributions of each feature *pair*. Compared to ordinary SHAP, the computational complexity increases by a factor $p$, which is why SHAP interaction values are mainly used with the very fast TreeSHAP algorithm, i.e., for tree-based models.
 
-2. Heuristics: Several heuristics are available that try to identify the feature that explains most of the vertical scatter in the dependency plot conditional on the value on the horizontal axis. The selected feature is then visualized on the color axis.
+2. Heuristics: Several heuristics are available that try to identify the feature that explains most of the vertical scatter in the dependence plot conditional on the value on the horizontal axis. The selected feature is then visualized on the color axis.
 
 #### Example
 
@@ -1034,7 +1034,7 @@ for (v in names(sv_importance(shp, kind = "no")))
 **Comments:**
 
 - Importance: See the example above.
-- The SHAP dependence plots show quite realistic effects. For most features they give a similar impression as the corresponding partial dependency plots.
+- The SHAP dependence plots show quite realistic effects. For most features they give a similar impression as the corresponding partial dependence plots.
 - The SHAP dependence plots also give indications of interaction effects. For example, there is a very strong interaction between vehicle age and car brand in the sense that "B12" vehicles tend to have higher claim frequencies only for new vehicles.
 - The vertical scatter is quite strong for all dependence plots, indicating strong interactions. For example, the effect of vehicle gas appears to depend strongly on vehicle age. Another example is the policy region: its effects are particularly strong for older drivers.
 
