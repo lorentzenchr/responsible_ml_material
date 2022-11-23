@@ -38,9 +38,9 @@ Welcome to the last chapter of the XAI part of the lecture "Responsible Machine 
 
 Regarding intrinsic explainability, there is the following basic hierarchy:
 
-1. Linear additive models (like GLMs): Their model structure is so simple that the effects can be read off directly from the numerical model output.
-2. Additive models (like GAMs): It is still possible to give a complete description of the effects, but they must be visualized for interpretation. 
-3. Black box models (like boosted trees or neural nets): These models contain many complex interactions, so that the effects can only be described approximately. Without interaction effects, such models would be additive and as transparent as a GAM.
+1. **Linear additive models (like GLMs):** Their model structure is so simple that the effects can be read off directly from the numerical model output.
+2. **Additive models (like GAMs):** It is still possible to give a complete description of the effects, but they must be visualized for interpretation. 
+3. **Black box models (like boosted trees or neural nets):** These models contain many complex interactions, so that the effects can only be described approximately. Without interaction effects, such models would be additive and as transparent as a GAM.
 
 The boundaries are blurred: GLMs can also include nonlinear effects and interaction terms. If one adds many interaction terms to a GLM or a GAM, it becomes almost as complex as a neural network. On the other hand, the complexity of boosted trees models and neural networks can be reduced by enforcing additivity for all or some features.
 
@@ -54,7 +54,7 @@ In the next two sections, we will learn how to create such additive and partly a
 
 Furthermore, we will see how monotonic constraints can additionally improve intrinsic interpretability of boosted trees.
 
-Remarks:
+**Remarks:**
 
 - Single decision trees do not fit into above hierarchy. They are neither linear nor additive, but still intrinsically interpretable.
 - For models with link functions, additivity is meant at the link scale, since the back transformation to the response scale introduces interaction effects. In most cases, we interpret such a model on the link scale.
@@ -166,11 +166,13 @@ The first approach produces additive models. The second approach is more general
 
 ## Additive boosted trees
 
-A *tree stump* is a decision tree with a single split. Its prediction function has the form $v_1 + (v_2 - v_1)\mathbb I(x^{(j)} \le s)$, where $\mathbb I$ is the indicator function, $s$ the split position of the selected variable $X^{(j)}$, and $v_1, v_2$ are the values of the left and right leaf. A boosted trees model with tree stumps as base learners (boosted tree stumps) is thus an additive model
+A *tree stump* is a decision tree with a single split. Its prediction function has the form $v_1 + (v_2 - v_1)\mathbb I(x^{(j)} \le s)$, where $\mathbb I$ is the indicator function, $s$ the split position of the selected variable $X^{(j)}$, and $v_1, v_2$ are the values of the left and right leaf. A boosted trees model with tree stumps $m_1, \dots, m_K$ as base learners (boosted tree stumps) is thus an additive model
 $$
   m(\boldsymbol x) = \beta_o + f_1(x^{(1)}) + \dots + f_p(x^{(p)})
 $$
-with piecewise constant functions $f_j$, $1 \le j \le p$. A schematic view of such a model for our French MTPL dataset could look as follows:
+with piecewise constant functions $f_j$, $1 \le j \le p$. The function $f_j$ equals the sum of all $m_k$ that split on $X^{(j)}$. 
+
+A schematic view of such a model for our French MTPL dataset could look as follows:
 
 ![Scheme 1: Additive boosted trees](figs/tree_additive.png)
 
@@ -239,17 +241,17 @@ shap_analysis(fit_lgb_add, X_small)
 
 ## Partly additive boosted trees
 
-In many situations, assuming additivity for all features leads to an unrealistically simple model. One way to relax the assumption for boosted trees is to grow trees of depth $m > 1$ (not counting the root node). For instance, if $m = 2$, the model can learn all pairwise interactions (why?). Similarly, larger tree depths allow higher order interactions to be represented. 
+In many situations, assuming additivity for all features leads to an unrealistically simple model. One way to relax the assumption for boosted trees is to grow trees of depth $\ell > 1$ (not counting the root node). For instance, if $\ell = 2$, the model can learn all pairwise interactions (why?). Similarly, larger tree depths allow higher order interactions to be represented. 
 
 What if we want to model some features additively while using interactions for other features? Such partly additive models can be created by specifying *interaction constraints*
 $$
-  IC = \{F_1, \dots, F_M\},
+  IC = \{F_1, \dots, F_K\},
 $$
-where each $F_m \subseteq \mathcal M$ defines a feature subset allowed to interact with each other [@lee2015].
+where each $F_k \subseteq \mathcal M$ defines a feature subset allowed to interact with each other [@lee2015].
 
-How do interaction constraints work technically? During tree growth, a split considers features only from those $F_m$ that contain all previous split variables of the branch. Consequently, each branch in each tree will only use features from one $F_m \in IC$. This implies the desired structure for the tree and also for a tree ensemble.
+How do interaction constraints work technically? During tree growth, a split considers features only from those $F_k$ that contain all previous split variables of the branch. Consequently, each branch in each tree will only use features from one $F_k \in IC$. This implies the desired structure for the tree and also for a tree ensemble.
 
-Interaction constraints can be used to create partly additive boosted trees models. For instance, to have a model additive in feature $X^{(j)}$, we need to set $F_m = \{X^{(j)}\}$, and make sure that $X^{(j)} \notin F_k, \ k \ne m$.
+Interaction constraints can be used to create partly additive boosted trees models. For instance, to have a model additive in feature $X^{(j)}$, we can set $F_1 = \{X^{(j)}\}$, and make sure that $X^{(j)} \notin F_k, \ k > 1$.
 
 The following scheme shows a partly additive model with interaction constraints
 $$
@@ -261,7 +263,7 @@ The resulting model will be additive in driver-related features while allowing v
 
 Remarks: 
 
-- If all elements in $IC$ are disjoint, each tree uses features from only one $F_m$. (The first split variable determines which of the $F_m$.)
+- If all elements in $IC$ are disjoint, each tree uses features from only one $F_k$. (The first split variable determines which of the $F_k$.)
 - As an alternative to boosted tree stumps, we can specify $IC = \{\{X^{(1)}\}, \dots, \{X^{(p)}\}\}$ to create an additive boosted trees model, see the figure below.
 
 ![Additive boosted trees via interaction constraints](figs/tree_additive_ic.png)

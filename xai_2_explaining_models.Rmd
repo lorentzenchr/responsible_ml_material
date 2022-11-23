@@ -67,7 +67,7 @@ library(flashlight)
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
 reload <- TRUE
-refit <- TRUE  # Set to FALSE after the first run
+refit <- TRUE  # Set to FALSE after first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -817,27 +817,25 @@ Consider the following situation:
 
 - Let $\mathcal M$ denote a set of $p = |\mathcal M|$ players.
 - They play a cooperative game with numeric payoff to be maximized. 
-- The contribution (total expected sum of payoffs) of a subset $\mathcal L \subseteq \mathcal M$ of the players is measured by a function $v: \mathcal L \mapsto \mathbb R$.
+- The contribution (total expected sum of payoffs) of a subset $\mathcal L \subseteq \mathcal M$ (or *coalition*) of the players is measured by a function $v: \mathcal L \mapsto \mathbb R$.
 
 How can the total payoff be distributed fairly among the individual players? The answer was given in @shapley1953: The amount that player $j$ should receive is called *Shapley value* and equals
 $$
   \phi_j(v) = \phi_j = \sum_{\mathcal L \subseteq \mathcal M \setminus\{j\}} \underbrace{\frac{|\mathcal L|!(p - |\mathcal L| - 1)!}{p!}}_\text{Shapley weight} \big(\underbrace{v(\mathcal L \cup \{j\}) - v(\mathcal L)}_{\text{Contribution of player } j}\big), \ \ j = 1, \dots, p.
 $$
-Thus, a player's contribution is equal to the weighted average of his or her contribution to each possible coalition $\mathcal L$ of other players. The weights ensure that each coalition size $0 \le |\mathcal L| \le p-1$ receives equal weight, which follows from rewriting
-$$
-  \frac{|\mathcal L|!(p - |\mathcal L| - 1)!}{p!} = \frac{1}{p}\frac{1}{{p-1 \choose |\mathcal L|}}.
-$$
-$\phi_j$ is thus the average of the $p$ average contributions of player $j$ to coalitions of fixed size $0 \le |\mathcal L| \le p-1$. In Exercise 6iv, we will show that the Shapley value of player $j$ can also be interpreted as her (unweighted) average contribution over all permutations of the $p$ players.
+Thus, a player's contribution is equal to the weighted average of his or her contribution to each possible coalition $\mathcal L$ of other players. 
+
+This can be read as the (unweighted) average of the contribution of player $j$ over all $p!$ permutations of players. To see this, consider a permutation of the players. The $|\mathcal L|$ players appearing prior to player $j$ form the coalition $\mathcal L$, while the $p - |\mathcal L| - 1$ players $\mathcal Q$ *after* position $j$ do not play. We can permute the players in $\mathcal L$, and also the players in $\mathcal Q$ without effect on the contribution of player $j$. This leads to the numerator of the Shapley weight.
 
 To characterize "fairness", Shapley postulated axioms that may be described by these four desirable properties:
 
-- Efficiency: $v(\mathcal M) = \sum_{j = 0}^p \phi_j$, where $\phi_o = v(\emptyset)$ denotes the non-distributed payoff (often set to 0 in cooperative games).
+- **Efficiency:** $v(\mathcal M) = \sum_{j = 0}^p \phi_j$, where $\phi_o = v(\emptyset)$ denotes the non-distributed payoff (often set to 0 in cooperative games).
 
-- Symmetry: If $v(\mathcal L \cup \{i\}) = v(\mathcal L \cup \{j\})$ for every $\mathcal L \subseteq \mathcal M \setminus\{i, j\}$, then $\phi_i = \phi_j$.
+- **Symmetry:** If $v(\mathcal L \cup \{i\}) = v(\mathcal L \cup \{j\})$ for every $\mathcal L \subseteq \mathcal M \setminus\{i, j\}$, then $\phi_i = \phi_j$.
 
-- Dummy player: If $v(\mathcal L \cup \{j\}) = v(\mathcal L)$ for all coalitions $\mathcal L \subseteq \mathcal M \setminus\{j\}$, then $\phi_j = 0$.
+- **Dummy player:** If $v(\mathcal L \cup \{j\}) = v(\mathcal L)$ for all coalitions $\mathcal L \subseteq \mathcal M \setminus\{j\}$, then $\phi_j = 0$.
 
-- Linearity: Consider two cooperative games with gain functions $v$ and $w$. Then, $\phi_j(v + w) = \phi_j(v) + \phi_j(w)$ and $\phi_j(\alpha v) = \alpha \phi_j(v)$ for all $1 \le j \le p$ and $\alpha \in \mathbb R$.
+- **Linearity:** Consider two cooperative games with gain functions $v$ and $w$. Then, $\phi_j(v + w) = \phi_j(v) + \phi_j(w)$ and $\phi_j(\alpha v) = \alpha \phi_j(v)$ for all $1 \le j \le p$ and $\alpha \in \mathbb R$.
 
 Shapley values are the only way to distribute total winnings among players in a way that satisfies these four properties.
 
@@ -858,7 +856,7 @@ Since models cannot simply "turn off" some features during prediction, the estim
 
 There exist several algorithms to calculate SHAP values for an observation $\mathbf x$. Three particularly important ones are the following (from very slow to very fast):
 
-- **Monte-Carlo sampling** [@strumbelj2010]: To calculate $\phi_j$ for a particular $j$, the contributions $m(\mathbf x_\mathcal L \cup \{j\}) - m(\mathbf x_\mathcal L)$ are calculated as marginal expectations for many randomly sampled feature subset $\mathcal L \subseteq \mathcal M \setminus \{j\}$ and then plugged into Shapley's formula. Marginal expectations are calculated empirically with respect to some background data set. This method is model-agnostic, but either very slow or very imprecise.
+- **Monte-Carlo sampling** [@strumbelj2010]: To calculate $\phi_j$ for a particular $j$, the contributions $m(\mathbf x_{\mathcal L \cup \{j\}}) - m(\mathbf x_\mathcal L)$ are calculated as marginal expectations for many randomly sampled feature subset $\mathcal L \subseteq \mathcal M \setminus \{j\}$ and then plugged into Shapley's formula. Marginal expectations are calculated empirically with respect to some background data set. This method is model-agnostic, but either very slow or very imprecise.
 - **Kernel SHAP** [@lundberg2017]: Another model-agnostic algorithms is called Kernel SHAP. Like Monte-Carlo sampling, it estimates $m(\mathbf x_\mathcal L)$ via marginal expectations for many $\mathcal L \subseteq \mathcal M$. Then, it uses a regression trick to obtain all $\phi_j$ directly without plugging into Shapley's formula, see @covert2021 for details. @aas2021 proposed a version using conditional expectations instead.
 - **TreeSHAP** [@lundberg2020] is a method tailored for decision trees. It estimates $m(\mathbf x_\mathcal L)$ by a conditional expectation using a recursive (path-dependent) algorithm identical to a method for calculating exact partial dependence plots for decision trees in @friedman2001, page 27. To evaluate Shapley's formula, the basic algorithm must be applied to each $\mathcal L \subseteq \mathcal M$ and is therefore exponentially slow in $p$. Fortunately, the algorithm has been implemented in a way that evaluates all subsets $\mathcal L$ together, resulting in an exponential speedup. Also a slower "interventional" version exists that estimates marginal expectations. Thanks to additivity of SHAP values, TreeSHAP works well for tree ensembles such as boosted trees.
 
@@ -898,6 +896,10 @@ shp
 # Two typical visualizations
 sv_waterfall(shp) +
   ggtitle("Waterfall plot of one observation")
+
+# For slides
+# sv_waterfall(shp, annotation_size = 5, size = 18) + 
+#   theme(axis.text = element_text(size = 15), axis.title = element_text(size = 18))
 
 sv_force(shp) +
   ggtitle("Force plot of one observation")
@@ -1178,6 +1180,5 @@ with_seed(345,
     i. Search two observations with similar predictions, but relatively different feature values. Compare their waterfall plots.
     ii. Perform a SHAP analysis and summarize your findings in a compact way.
     iii. Can you improve the original GLM based on these insights?
-    iv. Why can we say: "The Shapley value of player $j$ equals her average contribution over all permutations of the $p$ players?"
-    
+
 # References
