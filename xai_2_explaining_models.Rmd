@@ -67,7 +67,7 @@ library(flashlight)
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
 reload <- TRUE
-refit <- TRUE  # Set to FALSE after first run
+refit <- TRUE  # Set to FALSE after the first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -821,7 +821,7 @@ Consider the following situation:
 
 How can the total payoff be distributed fairly among the individual players? The answer was given in @shapley1953: The amount that player $j$ should receive is called *Shapley value* and equals
 $$
-  \phi_j(v) = \phi_j = \sum_{\mathcal L \subseteq \mathcal M \setminus\{j\}} \underbrace{\frac{|\mathcal L|!(p - |\mathcal L| - 1)!}{p!}}_\text{Shapley weight} \big(\underbrace{v(\mathcal L \cup \{j\}) - v(\mathcal L)}_{\text{Contribution of player } j}\big), \ \ j = 1, \dots, p.
+  \phi_j(v) = \phi_j = \sum_{\mathcal L \subseteq \mathcal M \setminus\{j\}} \underbrace{\frac{|\mathcal L|!(p - |\mathcal L| - 1)!}{p!}}_\text{Shapley weight} \big(\underbrace{v(\mathcal L \cup \{j\}) - v(\mathcal L)}_{\text{Contribution of player } j}\big).
 $$
 Thus, a player's contribution is equal to the weighted average of his or her contribution to each possible coalition $\mathcal L$ of other players. 
 
