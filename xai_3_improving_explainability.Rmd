@@ -70,10 +70,6 @@ library(flashlight)
 library(shapviz)
 library(grid)
 library(gridExtra)
-library(keras)
-# install_keras() # if no Python with TensorFlow is installed yet
-# devtools::install_github("andrie/deepviz")
-library(deepviz)
 
 # Reload data and model-related objects
 main <- "french_motor"
@@ -399,11 +395,11 @@ In this lecture, we have not yet worked with neural nets. While they are typical
 
 We assume that the reader has some background knowledge on neural nets and refer to @james2021 or @chollet2018 otherwise. In the examples, we will work with TensorFlow, using the handy Keras front-end. Since Keras and a part of TensorFlow are written in Python, running the examples in this chapter will require Python in the background, even if our code is written in R.
 
-Within Keras we will work with the *functional API*. It allows to represent very general model structures (also called *architectures* in neural network jargon). Actually, any model that can be characterized as a directed acyclic graph (DAG) could be implemented using this interface. Non-trivial examples include additive and partially additive models. 
+Within Keras we will work with the *functional API*. It allows to represent very general model structures (also called *architectures* in neural network jargon). Actually, any model that can be characterized as a directed acyclic graph (DAG) could be implemented using this interface. Non-trivial examples include additive and partly additive models. 
 
 ## A simple neural net
 
-To familiarize ourselves with Keras and review some neural network terminology, we will first create a very simple neural network - a GLM. It consists of two layers only: The input layer represents the features, and the output layer represents the response variable. The values of the output layer are transformed by the exponential "activation" function, corresponding to the inverse link function of the Poisson GLM. The output layer is *fully connected* or *dense*, which means that the value of its node is a weighted sum of all node values of the previous layer (in this case, of the input layer), see the left hand side of Scheme 4:
+To familiarize ourselves with Keras and get used to neural network terminology, we will first create a very simple neural network - a GLM. It consists of two layers only: The input layer represents the features, and the output layer represents the response variable. The values of the output layer are transformed by the exponential "activation" function, corresponding to the inverse link function of the Poisson GLM. The output layer is *fully connected* or *dense*, which means that the value of its node is a weighted sum of all node values of the previous layer (in this case, of the input layer), see the left hand side of Scheme 4:
 
 ![Scheme 4: (a) Neural net without hidden layer, (b) with hidden layer](figs/nn_with_and_without_hidden.jpg)
 
@@ -441,7 +437,12 @@ Remarks:
 Let us now fit a claims frequency GLM with Keras/TensorFlow, i.e., the model in Scheme 4 (a). For simplicity, we encode all factor variables as integers, even if this is not always intelligent (see later examples how to create better models). We use a learning rate of 0.02. This means that each parameter update takes 0.02 steps towards the negative gradient.
 
 ```{r}
-# bug with case weights: https://github.com/rstudio/keras/issues/1341
+library(keras)
+# install_keras() # if no Python with TensorFlow is installed yet
+# devtools::install_github("andrie/deepviz")
+library(deepviz)
+
+# Bug with case weights: https://github.com/rstudio/keras/issues/1341
 
 # Standardization - required to improve init step
 sc1 <- attributes(scale(data.matrix(train[x])))[c("scaled:center", "scaled:scale")]
@@ -458,18 +459,6 @@ cb <- list(
   callback_early_stopping(patience = 20),
   callback_reduce_lr_on_plateau(patience = 5)
 )
-
-# Plot performance over epochs after short burn-in phase
-plot_history <- function(history, from = 2) {
-  history$metrics[c("loss", "val_loss")] %>% 
-    data.frame() %>% 
-    mutate(epoch = row_number()) %>% 
-    filter(epoch >= from) %>% 
-    pivot_longer(cols = c("loss", "val_loss")) %>% 
-  ggplot(aes(x = epoch, y = value, group = name, color = name)) +
-    geom_line(size = 1.4) + 
-    ggtitle("Performance by epoch")
-}
 
 # Mimics a GLM
 make_glm <- function() {
@@ -505,7 +494,7 @@ if (refit) {
       validation_split = 0.2,
       callbacks = cb
     )
-  plot_history(history)
+  plot(history)
   save_model_weights_hdf5(nn_glm, file.path(main, "nn_glm.h5"))
 } else {
   load_model_weights_hdf5(nn_glm, file.path(main, "nn_glm.h5"))
@@ -575,7 +564,7 @@ if (refit) {
       validation_split = 0.2,
       callbacks = cb
     )
-  plot_history(history)
+  plot(history)
   save_model_weights_hdf5(nn_full, file.path(main, "nn_full.h5"))
 } else {
   load_model_weights_hdf5(nn_full, file.path(main, "nn_full.h5"))
@@ -606,10 +595,10 @@ Note that some components can also be represented linearly, i.e., without sub-ne
 We will now build a neural additive model with three different types of inputs:
 
 - "VehBrand" and "PolicyRegion": Integer encoded and represented by a 1-dimensional embedding layer each.
-- "VehGas" and "logDensity": Scaled and represented by a linear function each.
+- "VehGas" and "logDensity": Scaled and represented by a linear function each. ("VehGas" is binary, so scaling would not be necessary.)
 - "VehAge", "DrivAge", and "VehPower": Scaled and represented by a small neural network each.
 
-The implied structure is very similar to our classic GAM, with the exception that the latter also represents "logDensity" non-linearly.
+The implied structure is similar to our classic GAM.
 
 Normally, a statistical model requires a single dataset for training. A neural network, like the one described here, is different. We will pass multiple input matrices: One for each categorical variable, one for each additive component, and one for the rest. In the same way, we could build a neural network using images, text, and numbers as inputs.
 
@@ -703,7 +692,7 @@ if (refit) {
       validation_split = 0.2,
       callbacks = cb
     )
-  plot_history(history)
+  plot(history)
   save_model_weights_hdf5(nn_additive, file.path(main, "nn_additive.h5"))
 } else {
   load_model_weights_hdf5(nn_additive, file.path(main, "nn_additive.h5"))
@@ -729,7 +718,7 @@ Our last neural network was additive in all features. If we wanted to add pairwi
  
 ### Example
 
-In order to create a model as outline above, we will directly connect the following components to the output layer, producing an additive model in each of the components:
+In order to create a model as outlined above, we will directly connect the following components to the output layer, producing an additive model in each of the components:
 
 - "logDensity": Scaled and represented as a linear function.
 - "DrivAge": Scaled and represented by a small sub-network.
@@ -811,7 +800,7 @@ if (refit) {
       validation_split = 0.2,
       callbacks = cb
     )
-  plot_history(history)
+  plot(history)
   save_model_weights_hdf5(nn_part_add, file.path(main, "nn_part_add.h5"))
 } else {
   load_model_weights_hdf5(nn_part_add, file.path(main, "nn_part_add.h5"))
