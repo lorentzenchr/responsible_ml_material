@@ -24,7 +24,7 @@ Tobias Fissler, Christian Lorentzen, and Michael Mayer. “Model Comparison and 
 
 ### Slides
 
-[Draft (pdf)](https://github.com/lorentzenchr/responsible_ml_material/blob/main/slides_xai.pdf)
+[Slides XAI (pdf)](https://github.com/lorentzenchr/responsible_ml_material/blob/main/slides_xai.pdf)
 
 ### Lecture notes
 
