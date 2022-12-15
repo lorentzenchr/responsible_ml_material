@@ -13,8 +13,7 @@ From time to time, we will update the material linked below. You can also clone 
 
 ### Slides
 
-1. [Part 1 (pdf)](https://github.com/lorentzenchr/responsible_ml_material/blob/main/lecture_slides_part_1.pdf)
-2. [Part 2 (pdf)](https://github.com/lorentzenchr/responsible_ml_material/blob/main/lecture_slides_part_2.pdf)
+[Slides (pdf)](https://github.com/lorentzenchr/responsible_ml_material/blob/main/lecture_slides.pdf)
 
 ### Main reference
 
