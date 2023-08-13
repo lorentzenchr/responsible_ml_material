@@ -68,7 +68,7 @@ library(flashlight)
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
 reload <- TRUE
-refit <- FALSE
+refit <- TRUE  # Set to FALSE after first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
