@@ -61,7 +61,7 @@ The third chapter, "Improving Explainability", takes a different path. Here we e
 
 # Notation
 
-Throughout the XAI notebooks, we consider a typical modeling situation: a distributional property $T$ of a real-valued response variable $Y$ should be approximated by a model $m: \boldsymbol x \in \mathbb R^p \mapsto \mathbb R$ of a $p$-dimensional feature vector $\boldsymbol X = (X^{(1)}, \dots, X^{(p)})^T$ with value $\boldsymbol x = (x^{(1)}, \dots, x^{(p)})^T \in \mathbb R^p$, i.e.,
+Throughout the XAI notebooks, we consider a typical modeling situation: a distributional property $T$ of a real-valued response variable $Y$ should be approximated by a model $m: \boldsymbol x \in \mathbb R^p \mapsto \mathbb R$ of a $p$-dimensional feature vector $\boldsymbol X = (X^{(1)}, \dots, X^{(p)})$ with value $\boldsymbol x = (x^{(1)}, \dots, x^{(p)}) \in \mathbb R^p$, i.e.,
 $$
   T(Y\mid \boldsymbol X = \boldsymbol x) \approx m(\boldsymbol x).
 $$
@@ -91,7 +91,7 @@ The model equation of a linear regression model is assumed to satisfy
 $$
   \mathbb E(Y \mid \boldsymbol x) = m(\boldsymbol x) = \beta_o + \beta_1 x^{(1)} + \dots + \beta_p x^{(p)},
 $$
-where $(\beta_o, \beta_1, \dots, \beta_p)^T \in \mathbb R^{p+1}$ is the parameter vector to be estimated by minimizing the sum of squared errors
+where $(\beta_o, \beta_1, \dots, \beta_p) \in \mathbb R^{p+1}$ is the parameter vector to be estimated by minimizing the sum of squared errors
 $$
   \sum_{i = 1}^n (y_i - \hat y_i)^2
 $$
@@ -130,6 +130,8 @@ GAMs and GLMs can also contain interaction terms, i.e., components that depend o
 Like a neural net, gradient boosted trees [@friedman2001] allow to represent extremely flexible model equations. They can automatically pick up complex interactions between covariates, a process that would need to be done in a manual way for linear models. Such models are fitted by applying gradient boosting on the objective function chosen in line with $T$. 
 
 In the statistical software R, different implementation of gradient boosting exist. We will mainly work with "XGBoost" [@chen2016] and "LightGBM" [@ke2017]. They allow to model different functionals $T$, and offer a rich set of objective functions and many regularization parameters. We will, as a competitor of the Poisson GLM and the Poisson GAM, also consider Poisson boosted trees.
+
+For details on gradient boosting, check our corresponding lecture slides, and also [this section](https://mayer79.github.io/statistical_computing_material/5_Trees.html#4_Gradient_Boosted_Trees) of "Statistical Computing".
 
 # Non-Life Insurance Pricing
 
@@ -205,10 +207,12 @@ The first R script of this notebook performs the following steps:
 - The column names of the features, of the response and of the exposure are stored in variables.
 - All relevant columns are described univariately.
 
+Note: We will often use the forward pipe operator `|>`. It moves the left-hand side as first argument in the function on the right-hand side. An example: `iris |> head()` is the same as `head(iris)`. If you need a quick refresher on R, go through [the first chapter](https://mayer79.github.io/statistical_computing_material/1_R_in_Action.html) of my statistical computing lecture.
+
 ```{r}
 library(tidyverse)
-library(gridExtra)
-library(OpenML)   # devtools::install_github("openml/openml-r")
+library(patchwork)
+library(OpenML)
 library(farff)
 
 main <- "french_motor"
@@ -227,18 +231,15 @@ if (refit) {
   }
   
   # Preprocessing
-  prep <- raw %>% 
+  prep <- raw |> 
     # Identify rows that might belong to the same policy
     group_by_at(
       c("Area", "VehPower", "VehAge", "DrivAge", "BonusMalus", "VehBrand", 
         "VehGas", "Density", "Region")
-    ) %>% 
-    mutate(
-      group_id = cur_group_id(),
-      group_size = n()
-    ) %>% 
-    ungroup() %>% 
-    arrange(group_id) %>%
+    ) |> 
+    mutate(group_id = cur_group_id(), group_size = n()) |> 
+    ungroup() |> 
+    arrange(group_id) |>
     # Usual preprocessing
     mutate(
       Exposure = pmin(1, Exposure),
@@ -268,18 +269,20 @@ head(prep[, c("IDpol", "group_id", "ClaimNb", x, w, y)], 8)
 summary(prep[, c(x, w, y)])
 
 # Histograms
-prep %>%
-  select_at(c("Freq", "Exposure", "DrivAge", "VehAge", "VehPower", "logDensity")) %>% 
-  pivot_longer(everything()) %>% 
+prep |>
+  select(Freq, Exposure, DrivAge, VehAge, VehPower, logDensity) |> 
+  pivot_longer(everything()) |> 
 ggplot(aes(x = value)) +
   geom_histogram(bins = 19, fill = fillc) +
-  facet_wrap(~ name, scales = "free") +
+  facet_wrap(~name, scales = "free") +
   ggtitle("Histograms of numeric columns")
 
 # Barplots
-c("ClaimNb", "VehBrand", "VehGas", "PolicyRegion") %>% 
-  lapply(function(v) ggplot(prep, aes_string(v)) + geom_bar(fill = fillc)) %>% 
-  grid.arrange(grobs = ., top = "Barplots of discrete columns")
+x_discrete <- c("ClaimNb", "VehBrand", "VehGas", "PolicyRegion")
+one_barplot <- function(v) {
+  ggplot(prep, aes_string(v)) + geom_bar(fill = fillc)
+}
+wrap_plots(lapply(x_discrete, one_barplot), top = "Barplots of discrete columns")
 ```
 
 **Comments:** 
@@ -292,8 +295,8 @@ c("ClaimNb", "VehBrand", "VehGas", "PolicyRegion") %>%
 
 We will now calculate three models with R: 
 
-1. An additive Poisson GLM fitted with the function `glm()` from the "stats" package, a
-2. Poisson GAM with several penalized regression smooths with the `gam()` function of the "mgcv" package, and a
+1. An additive Poisson GLM fitted with the function `glm()` from the {stats} package, a
+2. Poisson GAM with several penalized regression smooths with the `gam()` function of the {mgcv} package, and a
 3. Poisson boosted trees model with implicit log link fitted by LightGBM [@ke2017] and tuned with grouped five-fold cross-validation. 
 
 The models are calculated on about 80% of the observations, while the rest is kept for model validation. Since we suspect that some policies are represented by multiple rows, the data split is done in a grouped way, assigning all rows with the same "group_id" to either the training or the test dataset. That logic was also applied to create the cross-validation folds for selecting or *tuning* the hyperparameters of the LightGBM model. More about grouped splits will follow in Chapter 2.
@@ -305,7 +308,7 @@ library(lightgbm)
 
 set.seed(22)  # Seeds the data split as well as the boosted trees model
 
-ind <- partition(prep[["group_id"]], p = c(train = 0.8, test = 0.2), type = "grouped")
+ind <- partition(prep$group_id, p = c(train = 0.8, test = 0.2), type = "grouped")
 train <- prep[ind$train, ]
 test <- prep[ind$test, ]
 
@@ -379,7 +382,7 @@ if (refit) {
 
 # Exercises
 
-Here, we will work with an Australian car claims dataset "dataCar" available in the R package "insuranceData".
+Here, we will work with an Australian car claims dataset "dataCar" available in the R package {insuranceData}.
 
 ```{r, eval = FALSE}
 library(tidyverse)
@@ -389,7 +392,7 @@ data(dataCar)
 head(dataCar)
 
 # Data preparation
-prep <- dataCar %>% 
+prep <- dataCar |>  
   mutate(
     Freq = numclaims / exposure,
     Sev = claimcst0 / numclaims,
@@ -424,7 +427,7 @@ params <- list(
 2. Modeling: Next, we develop different claims frequency models using the same set of features (`x_vars`).
     i. Split the dataset into 80% for training and 20% for testing. Don't touch the test data during modeling.
     ii. GLM: Fit an exposure-weighted Poisson GLM with log link to the claim frequencies. Interpret the estimated coefficients of the features "log_value" and "gender".
-    iii. Random forest: Model "Freq" by an exposure-weighted random forest with the R package "ranger" using the quadratic loss. Select the optimal tree depth by minimizing exposure-weighted Poisson deviance calculated from the out-of-bag (OOB) predictions on the training data. How are OOB predictions being calculated? You can use the function `deviance_poisson()` in the "MetricsWeighted" package to calculate deviance.
-    iv. XGBoost: Study the documentation of [XGBoost](https://xgboost.readthedocs.io/en/stable/). The original publication is @chen2016, and a fantastic slide deck (pdf) of the author can be found on this [Link](https://web.njit.edu/~usman/courses/cs675_fall16/BoostedTree.pdf). Use the "xgboost" package to fit an exposure-weighted Poisson XGBoost model with 196 boosting rounds and the hyperparameters stated in the code above. We will later see *how* to find such parameters. Note that XGBoost automatically uses a log link when fitting a Poisson model.
+    iii. Random forest: Model "Freq" by an exposure-weighted random forest with the R package {ranger} using the quadratic loss. Select the optimal tree depth by minimizing exposure-weighted Poisson deviance calculated from the out-of-bag (OOB) predictions on the training data. How are OOB predictions being calculated? You can use the function `deviance_poisson()` in the {MetricsWeighted} package to calculate deviance.
+    iv. XGBoost: Study the documentation of [XGBoost](https://xgboost.readthedocs.io/en/stable/). The original publication is @chen2016, and a fantastic slide deck (pdf) of the author can be found on this [Link](https://web.njit.edu/~usman/courses/cs675_fall16/BoostedTree.pdf). Use the {xgboost} package to fit an exposure-weighted Poisson XGBoost model with 196 boosting rounds and the hyperparameters stated in the code above. We will later see *how* to find such parameters. Note that XGBoost automatically uses a log link when fitting a Poisson model.
 
 # References

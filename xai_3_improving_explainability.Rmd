@@ -57,7 +57,7 @@ Furthermore, we will see how monotonic constraints can additionally improve intr
 **Remarks:**
 
 - Single decision trees do not fit into above hierarchy. They are neither linear nor additive, but still intrinsically interpretable.
-- For models with link functions, additivity is meant at the link scale, since the back transformation to the response scale introduces interaction effects. In most cases, we interpret such a model on the link scale.
+- For models with link functions, additivity is meant at the link scale, since the back-transformation to the response scale introduces interaction effects. In most cases, we interpret such a model on the link scale.
 
 ```{r}
 library(tidyverse)
@@ -68,8 +68,7 @@ library(lightgbm)
 library(MetricsWeighted)
 library(flashlight)
 library(shapviz)
-library(grid)
-library(gridExtra)
+library(patchwork)
 
 # Reload data and model-related objects
 main <- "french_motor"
@@ -88,25 +87,14 @@ with_seed(938,
 summary_model <- function(model, pred_fun = predict, 
                           v = c("DrivAge", "logDensity", "VehAge", "VehBrand")) {
   fl <- flashlight(
-    model = model, 
-    label = "any_model", 
-    data = test, 
-    y = y, 
-    w = w, 
+    model = model, label = "xyz", data = test, y = y, w = w, 
     metrics = list(`Relative deviance reduction` = r_squared_poisson),
-    predict_function = pred_fun, 
-    linkinv = log
+    predict_function = pred_fun, linkinv = log
   )
   
   the_plot <- function(z) {
-    light_ice(
-      fl, 
-      z, 
-      center = "middle", 
-      n_max = 200, 
-      seed = 482, 
-      evaluate_at = unique(fl$data[[z]])
-    ) %>% 
+    light_ice(fl, z, center = "middle", n_max = 200, 
+              seed = 482, evaluate_at = unique(fl$data[[z]])) |> 
       plot(color = fillc, alpha = 0.1) + 
       labs(title = sprintf("c-ICE plot of '%s'", z), y = "Centered log frequency") +
       theme(plot.title = element_text(size = 11))
@@ -118,37 +106,13 @@ summary_model <- function(model, pred_fun = predict,
     scales::percent(light_performance(fl)$data$value, accuracy = 0.01)
   )
   
-  p <- lapply(v, the_plot)
-  grid.arrange(
-    grobs = p, 
-    top = textGrob(the_title, gp = gpar(fontsize = 13, fontface = "bold"))
-  )
-}
-
-# Function that plots a couple of SHAP plots
-shap_analysis <- function(model, X, 
-                          v = c("DrivAge", "logDensity", "VehAge", "VehBrand")) {
-  shp <- shapviz(model, X_pred = data.matrix(X), X = X)
-
-#   (sv_importance(shp) +
-#     ggtitle("SHAP importance plot")) %>% 
-#     print()
-
-  the_plot <- function(z) {
-    sv_dependence(shp, z, "auto", alpha = 0.5) + 
-      labs(title = z, y = "SHAP value") +
-      theme(plot.title = element_text(size = 11))
-  }
-  
-  grid.arrange(
-    grobs = lapply(v, the_plot), 
-    top = textGrob("SHAP dependence plots", gp = gpar(fontsize = 13, fontface = "bold"))
-  )
+  wrap_plots(lapply(v, the_plot)) +
+    plot_annotation(the_title)
 }
 
 # Some prediction function
 pred_lgb <- function(fit, X) predict(fit, data.matrix(X[x]))
-pred_exp <- function(m, X) predict(m, X, type = "response")
+pred_exp <- function(fit, X) predict(fit, X, type = "response")
 ```
 
 # Structuring Boosted Trees
@@ -188,12 +152,13 @@ Besides showing relative deviance gains on the test dataset, throughout this sec
 First, we analyze the classic GAM, then the additive LightGBM model.
 
 ```{r}
+X_train <- data.matrix(train[x])
+
 dtrain <- lgb.Dataset(
-  data.matrix(train[x]), 
+  X_train, 
   label = train[[y]], 
   weight = train[[w]],
   params = list(feature_pre_filter = FALSE)
-
 )
 
 if (refit) {
@@ -225,7 +190,10 @@ summary_model(fit_lgb_add, pred_fun = pred_lgb) # 2.89%
 with_seed(536, 
   X_small <- sample_n(train[x], 2000)
 )
-shap_analysis(fit_lgb_add, X_small)
+x_sel <- c("DrivAge", "logDensity", "VehAge", "VehBrand")
+shp <- shapviz(fit_lgb_add, X_pred = data.matrix(X_small), X = X_small)
+sv_dependence(shp, v = x_sel, color_var = NULL) +
+  plot_annotation("SHAP dependence plots")
 ```
 
 **Comments:**
@@ -283,7 +251,8 @@ if (refit) {
     min_data_in_leaf = 20, 
     min_sum_hessian_in_leaf = 0.1, 
     colsample_bynode = 1, 
-    bagging_fraction = 1, 
+    bagging_fraction = 1,
+    # poisson_max_delta_step = 0.7,
     lambda_l1 = 0, 
     lambda_l2 = 0,
     num_threads = 7, 
@@ -291,12 +260,7 @@ if (refit) {
   )
   
   with_seed(4458,
-    fit_lgb_part_add <- lgb.train(
-      params = params, 
-      data = dtrain, 
-      nrounds = 554, 
-      verbose = -1
-    )
+    fit_lgb_part_add <- lgb.train(params, data = dtrain, nrounds = 554, verbose = -1)
   )  
   lgb.save(fit_lgb_part_add, file.path(main, "fit_lgb_part_add.txt"))
 } else {
@@ -306,7 +270,9 @@ if (refit) {
 # Inspect
 summary_model(fit_lgb, pred_fun = pred_lgb)          # 5.04%
 summary_model(fit_lgb_part_add, pred_fun = pred_lgb) # 4.82%
-shap_analysis(fit_lgb_part_add, X_small)
+shp <- shapviz(fit_lgb_part_add, X_pred = data.matrix(X_small), X = X_small)
+sv_dependence(shp, v = x_sel) +
+  plot_annotation("SHAP dependence plots")
 ```
 
 **Comments:**
@@ -325,7 +291,7 @@ In practice, the usefulness and trustworthiness of a model can drop dramatically
 - A claims severity model for car collisions is expected to be monotonically increasing in the car value, everything else being fixed.
 - A claims frequency model for car collisions is expected to be monotonically decreasing in the deductible, Ceteris Paribus.
 
-How do monotonic constraints work? To enforce monotonicity for the $j$th feature in a decision tree, the rule is essentially as follows: A candidate split that violates the condition on its child nodes receives an infinite penalty and is therefore discarded. 
+How do monotonic constraints work? To enforce monotonicity for the $j$th feature in a decision tree, the rule is essentially as follows: A candidate split that violates the condition on its child nodes receives an infinite penalty and is therefore discarded. (Since a tree can split on the same feature multiple times, things are a bit more complicated.)
 
 In the following scheme, Tree A represents a prediction function (on log claims frequency scale) that is monotonically decreasing in the vehicle age. The split on the lower left of Tree B violates this constraint and is discarded (and replaced by some other split).
 
@@ -336,8 +302,8 @@ Remarks:
 - Monotonicity also translates to tree ensembles such as boosted trees or random forests.
 - Use a monotonic constraint only if it makes sense conditional on all possible combinations of the other features. Take a house price model, for example: At first glance, predictions should increase monotonically with the number of rooms. At second glance, this is not necessarily a good idea, because for a fixed living area, more rooms are not necessarily better.
 - A monotonicity constraint helps to reduce wiggliness of an effect.
-- Furthermore, it works with or without interaction constraints.
-- There are also implementations of GAMs and GLMs that allow to take monotonicity into account.
+- Furthermore, it can be combined with interaction constraints.
+- There are also implementations of GAMs, GLMs, and neural nets that allow to take monotonicity into account.
 - For flexibly modeled effects, violations of desired monotonicity often happens as a consequence of overfitting on outlying feature values, a problem that can already dealt with during feature preprocessing by truncation.
 
 ### Example
@@ -353,12 +319,7 @@ if (refit) {
   params$monotone_constraints <- mc
 
   with_seed(4358,
-    fit_lgb_monotone <- lgb.train(
-      params = params, 
-      data = dtrain, 
-      nrounds = 554, 
-      verbose = -1
-    )
+    fit_lgb_monotone <- lgb.train(params, data = dtrain, nrounds = 554, verbose = -1)
   )  
   lgb.save(fit_lgb_monotone, file.path(main, "fit_lgb_monotone.txt"))
 } else {
@@ -367,7 +328,9 @@ if (refit) {
 
 # Inspect
 summary_model(fit_lgb_monotone, pred_fun = pred_lgb) # 4.78%
-shap_analysis(fit_lgb_monotone, X_small)
+shp <- shapviz(fit_lgb_monotone, X_pred = data.matrix(X_small), X = X_small)
+sv_dependence(shp, v = x_sel) +
+  plot_annotation("SHAP dependence plots")
 ```
 
 **Comments:**
@@ -393,9 +356,22 @@ In this lecture, we have not yet worked with neural nets. While they are typical
 - fit models with millions of parameters,
 - perform non-linear dimension reduction.
 
-We assume that the reader has some background knowledge on neural nets and refer to @james2021 or @chollet2018 otherwise. In the examples, we will work with TensorFlow, using the handy Keras front-end. Since Keras and a part of TensorFlow are written in Python, running the examples in this chapter will require Python in the background, even if our code is written in R.
+We assume that the reader has some background knowledge on neural nets and refer to @james2021 or @chollet2018 otherwise. In the examples, we will work with TensorFlow, using the handy Keras front-end. 
 
-Within Keras we will work with the *functional API*. It allows to represent very general model structures (also called *architectures* in neural network jargon). Actually, any model that can be characterized as a directed acyclic graph (DAG) could be implemented using this interface. Non-trivial examples include additive and partly additive models. 
+## Software
+
+Since Keras and a part of TensorFlow are written in Python, running the examples in this chapter will require Python with TensorFlow >= 2.11. You can obtain it like this:
+
+1. Install the R package {keras}.
+2. Run `keras::install_keras()` to get a minimal Python installation with TensorFlow.
+3. If the following code works, you are all set. (Some red start-up messages/warnings are okay.)
+
+```r
+library(tensorflow)
+tf$constant("Hello Tensorflow!")
+```
+
+Within Keras, we will work with the *functional API*. It allows to represent very general model structures (also called *architectures* in neural network jargon). Actually, any model that can be characterized as a directed acyclic graph (DAG) could be implemented using this interface. Non-trivial examples include additive and partly additive models. 
 
 ## A simple neural net
 
@@ -437,22 +413,15 @@ Remarks:
 Let us now fit a claims frequency GLM with Keras/TensorFlow, i.e., the model in Scheme 4 (a). For simplicity, we encode all factor variables as integers, even if this is not always intelligent (see later examples how to create better models). We use a learning rate of 0.02. This means that each parameter update takes 0.02 steps towards the negative gradient.
 
 ```{r}
+# Bug with case weights: https://github.com/rstudio/keras/issues/1341
+library(caret)  # scaling
 library(keras)
 # install_keras() # if no Python with TensorFlow is installed yet
 # devtools::install_github("andrie/deepviz")
 library(deepviz)
 
-# Bug with case weights: https://github.com/rstudio/keras/issues/1341
-
 # Standardization - required to improve init step
-sc1 <- attributes(scale(data.matrix(train[x])))[c("scaled:center", "scaled:scale")]
-scaler <- function(X, sc) {
-  sc <- lapply(sc, function(z) z[colnames(X)])
-  X <- data.matrix(X)
-  scale(X, center = sc[["scaled:center"]], scale = sc[["scaled:scale"]])
-}
-
-# scaler(head(test[x], 2), sc = sc1)
+scaler <- preProcess(X_train)  # predict(scaler, head(X_train))
 
 # Callbacks
 cb <- list(
@@ -465,28 +434,28 @@ make_glm <- function() {
   k_clear_session()
   tensorflow::set_random_seed(469)
 
-  input <- layer_input(7, name = "All_features")
-  output <- input %>% 
-    layer_dense(units = 1, activation = "exponential", name = "Output")
+  input <- layer_input(ncol(X_train))
+  output <- input |> 
+    layer_dense(units = 1, activation = "exponential")
   
   # Connect inputs and output
-  keras_model(inputs = input, outputs = output)
+  keras_model(input, output)
 }
 
 # Create, compile and fit model
-nn_glm <- make_glm() %>% 
-  compile(optimizer = optimizer_adam(0.02), loss = loss_poisson)
+nn_glm <- make_glm() |> 
+  compile(
+    optimizer = optimizer_adam(0.02), loss = loss_poisson, weighted_metrics = list()
+  )
 
 # summary(nn_glm) # 8 parameters
-
-nn_glm %>% 
-  plot_model()
+plot_model(nn_glm)
 
 # Model fitting is slow because of sample_weight bug
 if (refit) {
-  history <- nn_glm %>% 
+  history <- nn_glm |> 
     fit(
-      x = scaler(train[x], sc = sc1), 
+      x = predict(scaler, X_train), 
       y = train[[y]],
       sample_weight = train[[w]],
       epochs = 100, 
@@ -504,7 +473,8 @@ if (refit) {
 summary_model(fit_glm, pred_fun = pred_exp) # 0.98
 summary_model(                              # 0.95
   nn_glm, 
-  pred_fun = function(m, X) predict(m, scaler(X[x], sc = sc1), batch_size = 1000)
+  pred_fun = function(m, X) 
+    predict(m, predict(scaler, data.matrix(X[x])), batch_size = 1000, verbose = FALSE)
 )
 ```
 
@@ -534,29 +504,29 @@ make_full_nn <- function() {
   tensorflow::set_random_seed(469)
 
   input <- layer_input(7, name = "All_features")
-  output <- input %>% 
-    layer_dense(20, activation = "tanh", name = "Hidden_1") %>%
-    layer_dense(15, activation = "tanh", name = "Hidden_2") %>%
-    layer_dense(5, activation = "tanh", name = "Hidden_3") %>% 
+  output <- input |> 
+    layer_dense(20, activation = "tanh", name = "Hidden_1") |>
+    layer_dense(15, activation = "tanh", name = "Hidden_2") |>
+    layer_dense(5, activation = "tanh", name = "Hidden_3") |> 
     layer_dense(1, activation = "exponential", name = "Output")
   
   # Connect inputs and output
-  keras_model(inputs = input, outputs = output)
+  keras_model(input, output)
 }
 
 # Create, compile and fit model
-nn_full <- make_full_nn() %>% 
-  compile(optimizer = optimizer_adam(0.02), loss = loss_poisson)
+nn_full <- make_full_nn() |> 
+  compile(
+    optimizer = optimizer_adam(0.02), loss = loss_poisson, weighted_metrics = list()
+  )
 
 # summary(nn_full) # 561 parameters
-
-nn_full %>% 
-  plot_model()
+plot_model(nn_full)
 
 if (refit) {
-  history <- nn_full %>% 
+  history <- nn_full |>
     fit(
-      x = scaler(train[x], sc = sc1), 
+      x = predict(scaler, X_train), 
       y = train[[y]],
       sample_weight = train[[w]],
       epochs = 100, 
@@ -571,9 +541,10 @@ if (refit) {
 }
 
 # Inspect
-summary_model( # 4.27%
+summary_model( # 4.64%
   nn_full, 
-  pred_fun = function(m, X) predict(m, scaler(X[x], sc = sc1), batch_size = 1000)
+  pred_fun = function(m, X) 
+    predict(m, predict(scaler, data.matrix(X[x])), batch_size = 1000, verbose = FALSE)
 )
 ```
 
@@ -600,91 +571,92 @@ We will now build a neural additive model with three different types of inputs:
 
 The implied structure is similar to our classic GAM.
 
-Normally, a statistical model requires a single dataset for training. A neural network, like the one described here, is different. We will pass multiple input matrices: One for each categorical variable, one for each additive component, and one for the rest. In the same way, we could build a neural network using images, text, and numbers as inputs.
+Normally, a statistical model requires a single data matrix for training. A neural network, like the one described here, is more flexible. In the following examples, we will pass each feature as a single-column matrix. In the same way, we could build a neural network using images, text, and numbers as inputs.
 
 ```{r}
-additive_groups <- list(
-  rest = c("VehGas", "logDensity"), 
-  VehAge = "VehAge", 
-  DrivAge = "DrivAge", 
-  VehPower = "VehPower"
-)
-
-# Standardizes input and provides list of separate input matrices. "groups" is a list
-# of column names to build an input to the neural net (without embedding variables)
-prep_nn <- function(X, groups, embed = c("VehBrand", "PolicyRegion"), sc = sc1) {
-  embeddings <- lapply(as.list(X[embed]), as.integer)
-  to_scale <- unlist(groups, use.names = FALSE)
-  X_scaled <- scaler(X[to_scale], sc = sc)
-  c(lapply(groups, function(z) X_scaled[, z]), embeddings)
+# Standardizes input and provides list of separate input matrices
+prep_nn <- function(X, embed = c("VehBrand", "PolicyRegion")) {
+  to_scale <- setdiff(colnames(X), embed)
+  X_scaled <- predict(scaler, X)[, to_scale]
+  X_scaled_with_emb <- cbind(X_scaled, X[, embed])
+  lapply(asplit(X_scaled_with_emb, 2), as.matrix)
 }
 
 # Input structure of two observations
-(example_rows <- prep_nn(train[1:2, ], additive_groups))
+(example_rows <- prep_nn(X_train[1:2, ]))
 
 # Architecture of neural additive model
 make_additive <- function() {
   k_clear_session()
   tensorflow::set_random_seed(469)
 
-  rest_input <- layer_input(2, name = "Other")
+  # Linear logDensity
+  logDensity_input <- layer_input(1, name = "logDensity")
   
-  VehAge_input <- layer_input(1, name = "VehAge")
-  VehAge_smooth <- VehAge_input %>% 
-    layer_dense(8, activation = "tanh", name = "Hidden_1") %>% 
+  # Smooth DrivAge
+  DrivAge_input <- layer_input(1, name = "DrivAge")
+  DrivAge_smooth <- DrivAge_input |> 
+    layer_dense(7, activation = "tanh", name = "Hidden_1") |> 
     layer_dense(1, name = "Smooth_1")
   
-  DrivAge_input <- layer_input(1, name = "DrivAge")
-  DrivAge_smooth <- DrivAge_input %>% 
-    layer_dense(7, activation = "tanh", name = "Hidden_2") %>% 
-    layer_dense(1, name = "Smooth_2")
-  
-  VehPower_input <- layer_input(1, name = "VehPower")
-  VehPower_smooth <- VehPower_input %>% 
-    layer_dense(3, activation = "tanh", name = "Hidden_3") %>% 
-    layer_dense(1, name = "Smooth_3")
-  
-  VehBrand_input <- layer_input(1, name = "VehBrand")
-  VehBrand_emb <- VehBrand_input %>% 
-    layer_embedding(4 + 1, 1, name = "Embed_1") %>% 
+  # Categorical embedding of dimension 1
+  PolicyRegion_input <- layer_input(1, name = "PolicyRegion")
+  PolicyRegion_emb <- PolicyRegion_input |> 
+    layer_embedding(6 + 1, 1, name = "Embed_1") |> 
     layer_flatten(name = "Flat_1")
   
-  PolicyRegion_input <- layer_input(1, name = "PolicyRegion")
-  PolicyRegion_emb <- PolicyRegion_input %>% 
-    layer_embedding(6 + 1, 1, name = "Embed_2") %>% 
+  # Linear VehGas
+  VehGas_input <- layer_input(1, name = "VehGas")
+
+  # Smooth VehPower and VehAge
+  VehPower_input <- layer_input(1, name = "VehPower")
+  VehPower_smooth <- VehPower_input |> 
+    layer_dense(3, activation = "tanh", name = "Hidden_2") |> 
+    layer_dense(1, name = "Smooth_2")
+  
+  VehAge_input <- layer_input(1, name = "VehAge")
+  VehAge_smooth <- VehAge_input |> 
+    layer_dense(8, activation = "tanh", name = "Hidden_3") |> 
+    layer_dense(1, name = "Smooth_3")
+
+  # VehBrand as 1D embedding
+  VehBrand_input <- layer_input(1, name = "VehBrand")
+  VehBrand_emb <- VehBrand_input |> 
+    layer_embedding(4 + 1, 1, name = "Embed_2") |> 
     layer_flatten(name = "Flat_2")
 
   # Names of list match names of input in any order. If unnamed, must be in right order
   inputs <- list(
-    rest = rest_input, 
-    VehAge = VehAge_input,
+    logDensity = logDensity_input,
     DrivAge = DrivAge_input,
+    PolicyRegion = PolicyRegion_input,
+    VehGas = VehGas_input,
     VehPower = VehPower_input,
-    VehBrand = VehBrand_input,
-    PolicyRegion = PolicyRegion_input
+    VehAge = VehAge_input,
+    VehBrand = VehBrand_input
   )
   
-  outputs <- list(rest_input, VehAge_smooth, DrivAge_smooth, VehPower_smooth,
-                  VehBrand_emb, PolicyRegion_emb) %>% 
-    layer_concatenate() %>% 
+  output <- list(VehGas_input, logDensity_input, VehAge_smooth, DrivAge_smooth, 
+                 VehPower_smooth, VehBrand_emb, PolicyRegion_emb) |> 
+    layer_concatenate() |> 
     layer_dense(1, activation = "exponential", name = "Output")
   
-  keras_model(inputs, outputs)
+  keras_model(inputs, output)
 }
 
 # Create, compile and fit model
-nn_additive <- make_additive() %>% 
-  compile(optimizer = optimizer_adam(0.1), loss = loss_poisson)
+nn_additive <- make_additive() |> 
+  compile(
+    optimizer = optimizer_adam(0.1), loss = loss_poisson, weighted_metrics = list()
+  )
 
 # summary(nn_additive) # 77 parameters
-
-nn_additive %>% 
-  plot_model()
+plot_model(nn_additive)
 
 if (refit) {
-  history <- nn_additive %>%
+  history <- nn_additive |>
     fit(
-      x = prep_nn(train[x], additive_groups), 
+      x = prep_nn(X_train), 
       y = train[[y]],
       sample_weight = train[[w]],
       epochs = 100, 
@@ -699,10 +671,10 @@ if (refit) {
 }
 
 # Inspect
-summary_model( # 2.67
+summary_model( # 2.64
   nn_additive, 
-  pred_fun = function(m, X) 
-    predict(m, prep_nn(X[x], additive_groups), batch_size = 1000)
+  pred_fun = function(m, X)
+    predict(m, prep_nn(data.matrix(X[x])), batch_size = 1000, verbose = FALSE)
 )
 ```
 
@@ -714,7 +686,7 @@ summary_model( # 2.67
 
 ## Partly additive neural nets
 
-Our last neural network was additive in all features. If we wanted to add pairwise interactions, we could simply modify the last architecture by adding a fully connected hidden layer before the output node. But what if we wanted to create a partly additive model that kept driver-related effects additive while allowing vehicle variables to interact? Several architectures would provide such a model, see Scheme 5 (b) for a sketch of the idea and @mayer2022 for a use case in geographic modeling.
+Our last neural network was additive in all features. If we wanted to add pairwise interactions, we could simply use a neural network with a single hidden layer. But what if we wanted to create a partly additive model that kept driver-related effects additive while allowing vehicle variables to interact? Several architectures would provide such a model, see Scheme 5 (b) for a sketch of the idea and @mayer2022 for a use case in geographic modeling.
  
 ### Example
 
@@ -726,73 +698,70 @@ In order to create a model as outlined above, we will directly connect the follo
 - Vehicle features are represented by a sub-network with five output nodes. "VehBrand" enters the sub-network via an embedding layer.
 
 ```{r}
-part_add_groups <- list(
-  veh = c("VehGas", "VehPower", "VehAge"),
-  logDensity = "logDensity", 
-  DrivAge = "DrivAge"
-)
-
-# Input structure of two observations
-(example_rows <- prep_nn(train[1:2, ], part_add_groups))
-
-# Architecture of neural additive model
+# Architecture of partly additive model
 make_partly_additive <- function() {
   k_clear_session()
   tensorflow::set_random_seed(469)
 
-  veh_input <- layer_input(3, name = "Other_Vehicle")
-  
+  # Additive non-vehicle features
   logDensity_input <- layer_input(1, name = "logDensity")
   
   DrivAge_input <- layer_input(1, name = "DrivAge")
-  DrivAge_smooth <- DrivAge_input %>% 
-    layer_dense(7, activation = "tanh", name = "Hidden_DrivAge") %>% 
+  DrivAge_smooth <- DrivAge_input |> 
+    layer_dense(7, activation = "tanh", name = "Hidden_DrivAge") |> 
     layer_dense(1, name = "Smooth_DrivAge")
-
-  VehBrand_input <- layer_input(1, name = "VehBrand")
-  VehBrand_emb <- VehBrand_input %>% 
-    layer_embedding(4 + 1, 1, name = "Embed_1") %>% 
-    layer_flatten(name = "Flat_1")
   
   PolicyRegion_input <- layer_input(1, name = "PolicyRegion")
-  PolicyRegion_emb <- PolicyRegion_input %>% 
-    layer_embedding(6 + 1, 1, name = "Embed_2") %>% 
-    layer_flatten(name = "Flat_2")
+  PolicyRegion_emb <- PolicyRegion_input |> 
+    layer_embedding(6 + 1, 1, name = "Embed_1") |> 
+    layer_flatten(name = "Flat_1")
+
+  # Vehicle features with interactions
+  VehGas_input <- layer_input(1, name = "VehGas")
+  VehPower_input <- layer_input(1, name = "VehPower")
+  VehAge_input <- layer_input(1, name = "VehAge")
   
+  VehBrand_input <- layer_input(1, name = "VehBrand")
+  VehBrand_emb <- VehBrand_input |> 
+    layer_embedding(4 + 1, 1, name = "Embed_2") |> 
+    layer_flatten(name = "Flat_2")
+
   inputs <- list(
-    veh = veh_input, 
     logDensity = logDensity_input,
     DrivAge = DrivAge_input,
-    VehBrand = VehBrand_input,
-    PolicyRegion = PolicyRegion_input
+    PolicyRegion = PolicyRegion_input,
+    VehGas = VehGas_input,
+    VehPower = VehPower_input,
+    VehAge = VehAge_input,
+    VehBrand = VehBrand_input
   )
   
-  veh_subnet <- list(veh_input, VehBrand_emb) %>% 
-    layer_concatenate() %>% 
-    layer_dense(15, activation = "tanh", name = "Hidden_Veh_1") %>% 
-    layer_dense(10, activation = "tanh", name = "Hidden_Veh_2") %>% 
+  veh_subnet <- list(VehGas_input, VehPower_input, VehAge_input, VehBrand_emb) |> 
+    layer_concatenate() |> 
+    layer_dense(15, activation = "tanh", name = "Hidden_Veh_1") |> 
+    layer_dense(10, activation = "tanh", name = "Hidden_Veh_2") |> 
     layer_dense(5, name = "Hidden_Veh_3")
   
-  outputs <- list(veh_subnet, logDensity_input, DrivAge_smooth, PolicyRegion_emb) %>% 
-    layer_concatenate() %>% 
+  output <- list(logDensity_input, DrivAge_smooth, PolicyRegion_emb, veh_subnet) |> 
+    layer_concatenate() |> 
     layer_dense(1, activation = "exponential", name = "Output")
   
-  keras_model(inputs, outputs)
+  keras_model(inputs, output)
 }
 
 # Create, compile and fit model
-nn_part_add <- make_partly_additive() %>% 
-  compile(optimizer = optimizer_adam(0.1), loss = loss_poisson)
+nn_part_add <- make_partly_additive() |> 
+  compile(
+    optimizer = optimizer_adam(0.1), loss = loss_poisson, weighted_metrics = list()
+  )
 
-# summary(nn_part_add) # 332 parameters
-
-nn_part_add %>% 
-  plot_model()
+# summary(nn_part_add) # 333 parameters
+plot_model(nn_part_add)
 
 if (refit) {
-  history <- nn_part_add %>%
+  history <- nn_part_add |>
     fit(
-      x = prep_nn(train[x], part_add_groups), 
+      x = prep_nn(X_train), 
       y = train[[y]],
       sample_weight = train[[w]],
       epochs = 100, 
@@ -807,16 +776,17 @@ if (refit) {
 }
 
 # Inspect
-summary_model( # 4.57%
+summary_model( # 4.38%
   nn_part_add, 
-  pred_fun = function(m, X) predict(m, prep_nn(X[x], part_add_groups), batch_size = 1000)
+  pred_fun = function(m, X)
+    predict(m, prep_nn(data.matrix(X[x])), batch_size = 1000, verbose = FALSE)
 )
 ```
 
 **Comments:**
 
 - Compared to the neural additive model, "VehAge" (and also the other vehicle-related variables) incorporates interaction effects with other vehicle characteristics. The driver characteristics remain additive.
-- Since some of the interaction effects are strong, the performance of the model has greatly improved compared to the neural additive model. Interestingly, it is even better than that of the fully flexible neural network. What could be the reason for this?
+- Since some of the interaction effects are strong, the performance of the model has greatly improved compared to the neural additive model. Its performance is quite close to the unconstrained model.
 - The performance is worse than that of the corresponding boosted trees model with interaction constraints. Part of the difference can be explained by the fact that the neural network effects are smooth and "logDensity" is represented linearly.
 
 # Excursion: Tuning Boosted Trees
@@ -933,6 +903,7 @@ grid <- expand.grid(
   bagging_fraction = c(0.8, 1),
   lambda_l1 = c(0, 4),
   lambda_l2 = c(0, 2.5, 5, 7.5),
+  # poisson_max_delta_step = c(0.1, 0.7),  # should try with Poisson objective
   num_threads = 7,
   stringsAsFactors = FALSE
 )
@@ -969,12 +940,12 @@ for (i in seq_len(grid_size)) {
 }
 
 # Load grid
-grid <- readRDS(grid_file) %>% 
+grid <- readRDS(grid_file) |> 
   arrange(score)
 
 # Show some strong parameter combinations
-grid %>% 
-  select_if(function(x) n_distinct(x) >= 2L) %>% 
+grid |> 
+  select_if(function(x) n_distinct(x) >= 2L) |> 
   head()
 
 # Fit model on best parameter combination
@@ -1000,7 +971,7 @@ library(xgboost)
 data(dataCar)
 
 # Data preparation
-prep <- dataCar %>% 
+prep <- dataCar |> 
   mutate(
     Freq = numclaims / exposure,
     Sev = claimcst0 / numclaims,
@@ -1063,6 +1034,7 @@ grid <- expand.grid(
   reg_lambda = 0:3,
   min_split_loss = c(0, 0.001),
   # tree_method = "hist", # if data is large
+  # max_delta_step = c(0.1, 0.7),  # should try with Poisson objective
   nthread = 7,
   stringsAsFactors = FALSE
 )
@@ -1099,7 +1071,7 @@ for (i in seq_len(grid_size)) {  # i <- 1
 }
 
 # Load and sort grid
-grid <- readRDS(grid_file) %>%
+grid <- readRDS(grid_file) |>
   arrange(cv_score)
 head(grid)
 
@@ -1131,6 +1103,7 @@ library(xgboost)
 library(MetricsWeighted)
 library(flashlight)
 library(shapviz)
+library(caret)
 library(keras)
 # install_keras() # if no Python with TensorFlow is installed yet
 
@@ -1160,8 +1133,8 @@ clip <- function(x, low = -Inf, high = Inf) {
   pmax(pmin(x, high), low)  
 }
 
-prep <- raw %>% 
-  filter(WeeklyPay >= 200, HoursWorkedPerWeek >= 20) %>% 
+prep <- raw |> 
+  filter(WeeklyPay >= 200, HoursWorkedPerWeek >= 20) |> 
   mutate(
     Ultimate = clip(UltimateIncurredClaimCost, high = 1e6),
     LogInitial = log(clip(InitialCaseEstimate, 1e2, 1e5)),
@@ -1196,8 +1169,8 @@ x_vars <- c(x_continuous, x_discrete)
 #===============================
 
 # Some rows
-prep %>%
-  select(all_of(c(y_var, x_vars))) %>%
+prep |>
+  select(all_of(c(y_var, x_vars))) |>
   head()
 
 # Histogram of the response on log scale
@@ -1206,20 +1179,20 @@ ggplot(prep, aes(.data[[y_var]])) +
   scale_x_log10()
 
 # Histograms of continuous predictors
-prep %>% 
-  select(all_of(x_continuous)) %>% 
-  pivot_longer(everything()) %>% 
+prep |> 
+  select(all_of(x_continuous)) |> 
+  pivot_longer(everything()) |> 
   ggplot(aes(value)) +
   geom_histogram(bins = 19, fill = "darkred") +
-  facet_wrap(~ name, scales = "free", ncol = 2)
+  facet_wrap(~name, scales = "free", ncol = 2)
 
-# Barplots of discrete predictors
-prep %>% 
-  select(all_of(x_discrete)) %>% 
-  pivot_longer(everything()) %>% 
+# Barplots of discrete predictors (using the fact that the values are all integers)
+prep |> 
+  select(all_of(x_discrete)) |> 
+  pivot_longer(everything()) |> 
   ggplot(aes(factor(value))) +
   geom_bar(fill = "darkred") +
-  facet_wrap(~ name, scales = "free", ncol = 2)
+  facet_wrap(~name, scales = "free", ncol = 2)
 
 #===============================
 # Data splits for models
@@ -1238,7 +1211,7 @@ X_test <- prep[-.in, x_vars]
 
 #===============================
 # XGBoost: Additive model 
-# (Exercise 3)
+# (Exercise 2)
 #===============================
 
 nrounds <- 484
@@ -1286,25 +1259,26 @@ params2 <- list(
 )
 ```
 
+For all models, we will use the features specified in `x_vars`.
+
 1. Classic model
-    i. Create an additive Gamma GLM with log link. 
+    i. Create an additive Gamma GLM with log link.
     ii. Interpret the effect of "LogInitial". 
     iii. How large is the relative deviance reduction compared to an intercept-only model on the training data?
-2. Interactions
-    i. Describe in words how to construct a neural net with pairwise interactions?
-    ii. Same question for a boosted trees model.
-    iii. How to construct a boosted trees model that is additive in two variables and has pairwise interactions for the other features? (-> Exercise 4).
-3. Additive XGBoost model
+2. Additive XGBoost model
     i. Fit an additive XGBoost Gamma regression using the parameters provided above. Note that XGBoost automatically uses a log link when fitting a Gamma model.
     ii. How much better is its relative deviance gain on the test data compared to the (training) performance of the GLM? 
     iii. Interpret the effects with a SHAP analysis.
     iv. Refit the model by forcing "LogWeeklyPay" to have a monotonically non-decreasing effect. What is the impact on the test performance? On the SHAP dependence plot of this variable?
-    v. Optional. Use grid search to improve the parameter combination suggested for part i. (Better in terms of test performance, but no cheating!)
+3. Interactions
+    i. Describe in words how to construct a boosted trees model with pairwise interactions.
+    ii. Same question for a neural net.
+    iii. How to construct a boosted trees model that is additive in two variables and has pairwise interactions for the other features?
 4. Partly additive XGBoost model
     i. Fit an XGBoost Gamma regression that is additive in "Female" and "DateNum" and has pairwise interactions for the other variables. Use the parameter combination provided above.
     ii. Why could a model like this make sense?
-    iii. Compare its relative deviance gain on the test data with the additive model of Exercise 3ii.
-    iv. Study SHAP dependence plots. Does the model has the desired structure?
+    iii. Compare its relative deviance gain on the test data with the additive model of Exercise 2ii.
+    iv. Study SHAP dependence plots. Does the model have the desired structure?
 5. Neural net
     i. Study the code below that creates an additive Gamma regression with log link.
     Play with its parameters and the architecture. Can you improve the test performance?
@@ -1328,64 +1302,47 @@ loss_gamma <- function(y_true, y_pred) {
   -k_log(y_true / y_pred) + y_true / y_pred
 }
 
-# Input construction (scaling and grouping)
-sc1 <- attributes(scale(data.matrix(X_train)))[c("scaled:center", "scaled:scale")]
-
-additive_groups <- list(
-  dummy = c("PartTime", "Female", "Married"), 
-  LogInitial = "LogInitial", 
-  LogWeeklyPay = "LogWeeklyPay", 
-  LogDelay = "LogDelay", 
-  LogAge = "LogAge", 
-  DateNum = "DateNum", 
-  WeekDay = "WeekDay", 
-  Hour = "Hour"
-)
-
-prep_nn <- function(X, groups, sc = sc1) {
-  X_scaled <- scale(X, center = sc[[1]], scale = sc[[2]])
-  lapply(groups, function(z) X_scaled[, z])
+# Scaling and splitting into feature lists
+scaler <- preProcess(X_train)
+prep_nn <- function(X) {
+  X_scaled <- predict(scaler, X)
+  lapply(asplit(X_scaled, 2), as.matrix)
 }
-(example_rows <- prep_nn(X_train[1:2, ], additive_groups))
+(example_rows <- prep_nn(X_train[1:2, ]))
 
 # Building the architecture
-make_input_layer <- function(groups) {
-  s <- lapply(groups, length)
-  nm <- names(groups)
-  Map(function(shape, name) layer_input(shape, name = name), s, nm)
-}
-
-smoother <- function(z) {
-  z %>% 
-    layer_dense(8, activation = "tanh") %>%
-    layer_dense(4, activation = "tanh") %>% 
-    layer_dense(1)
-}
-
-make_additive <- function(groups) {
+make_additive <- function() {
   k_clear_session()
   tensorflow::set_random_seed(469)
   
-  inputs <- make_input_layer(groups)
-  smoothed <- lapply(inputs[names(inputs) != "dummy"], smoother)
+  v <- colnames(X_train)
+  outputs <- inputs <- lapply(v, function(z) layer_input(1, name = z))
+  names(inputs) <- v
   
-  # Combine linear/dummy input and smoothed input
-  output <- unname(c(inputs["dummy"], smoothed)) %>%
-    layer_concatenate() %>% 
+  # Smooth only non-binary features
+  for (i in 1:length(v)) {
+    if (!(v[i] %in% c("PartTime", "Female", "Married")))
+      outputs[[i]] <- outputs[[i]] |>     
+        layer_dense(8, activation = "tanh") |>
+        layer_dense(4, activation = "tanh") |> 
+        layer_dense(1)
+  }
+
+  output <- outputs |> 
+    layer_concatenate() |> 
     layer_dense(units = 1, activation = "exponential")
   
-  # Connect inputs and output
-  keras_model(inputs = inputs, outputs = output)
+  keras_model(inputs, output)
 }
 
 # Create, compile, and fit model
-nn_additive <- make_additive(additive_groups)
+nn_additive <- make_additive()
 # summary(nn_additive) # 410 parameters
 
-history <- nn_additive %>% 
-  compile(optimizer = optimizer_adam(0.1), loss = loss_gamma) %>% 
+history <- nn_additive |> 
+  compile(optimizer = optimizer_adam(0.01), loss = loss_gamma) |> 
   fit(
-    x = prep_nn(X_train, additive_groups), 
+    x = prep_nn(X_train), 
     y = y_train, 
     epochs = 100, 
     batch_size = 400, 
@@ -1401,19 +1358,16 @@ fl_nn_additive <- flashlight(
   label = "nn_additive", 
   metrics = list(`R squared` = r_squared_gamma),
   predict_function = function(m, X) 
-    predict(m, prep_nn(X[x_vars], additive_groups), batch_size = 1000),
+    predict(m, prep_nn(X[x_vars]), batch_size = 1000, verbose = FALSE),
   linkinv = log  
 )
 
-light_performance(fl_nn_additive)  # 0.334
-
-light_ice(fl_nn_additive, v = "LogWeeklyPay", center = "middle") %>% 
+light_performance(fl_nn_additive)  # 0.33
+light_ice(fl_nn_additive, v = "LogWeeklyPay", center = "middle") |> 
   plot(color = "darkred")
-
-light_ice(fl_nn_additive, v = "DateNum", center = "middle") %>% 
+light_ice(fl_nn_additive, v = "DateNum", center = "middle") |> 
   plot(color = "darkred")
-
-light_ice(fl_nn_additive, v = "Female", center = "middle") %>% 
+light_ice(fl_nn_additive, v = "Female", center = "middle") |> 
   plot(color = "darkred")
 ```
 

@@ -56,6 +56,7 @@ We start by loading the data and models from the Chapter "Introduction". Then, w
 
 ```{r}
 library(tidyverse)
+library(patchwork)
 library(splitTools)
 library(withr)
 library(mgcv)
@@ -67,7 +68,7 @@ library(flashlight)
 main <- "french_motor"
 # main <- file.path("r", "french_motor")
 reload <- TRUE
-refit <- TRUE  # Set to FALSE after the first run
+refit <- TRUE  # Set to FALSE after first run
 
 load(file.path(main, "intro.RData"))
 fit_lgb <- lgb.load(file.path(main, "fit_lgb.txt"))
@@ -119,7 +120,7 @@ Note that $\hat m_\text{trivial}$ is ideally calculated on the training data, bu
 ```{r}
 training_mean <- weighted.mean(train[[y]], train[[w]])
 perf <- light_performance(fls, reference_mean = training_mean)
-perf
+perf$data
 
 plot(perf, fill = fillc) +
   labs(title = "Performance on hold-out data", x = "Model", y = "Score")
@@ -127,14 +128,14 @@ plot(perf, fill = fillc) +
 
 **Comments:** 
 
-- The more flexible the models, the higher their performance.
+- The more flexible our models, the higher their performance.
 - The performance differences between the models are remarkable. There appears to be strong nonlinearity (GLM versus GAM) and strong interaction effects (GAM versus boosting).
 - At first glance, a single-digit % deviance reduction seems modest. However, since a motor TPL claim is a rare and unpredictable event, this is quite normal.
 
 Next, let us compare the hold-out performance scores with their in-sample counterparts:
 
 ```{r}
-light_performance(fls, data = train) %>% 
+light_performance(fls, data = train) |>
   plot(fill = fillc) +
   labs(title = "Performance on training data", x = "Model", y = "Score")
 ```
@@ -169,8 +170,8 @@ First, we show the data rows belonging to the largest "group_id".
 
 ```{r}
 # The largest group_id
-prep %>% 
-  filter(group_size == max(prep$group_size)) %>% 
+prep |>
+  filter(group_size == max(prep$group_size)) |>
   select_at(c("IDpol", "group_id", y, w, x))
 
 # Random split
@@ -249,8 +250,8 @@ r_squared_poisson(
 **Comments:** 
 
 - The largest "group_id" has 22 rows. Not only are all their risk factors identical (this fact was used to construct the "group_id"), but also their "IDpol" values are very similar. Furthermore, their exposures and claim frequencies are identical. Models that are good at memorizing the training data will benefit if the rows of this observation appear also in the test data. But is it really a problem in our case?
-- The test R-squared of the GLM is now 1.08%, while it was 0.98% in the grouped setting. For the LightGBM model, the test R-squared is also higher (5.16% vs. 5.04%) but to a lesser extent than for the GLM.
-- It is comforting to see that ignoring the grouping structure did not have a large effect here. The observed differences may also be due to chance.
+- The test R-squared of the GLM is now 1.08%, while it was 0.98% in the grouped setting. For the LightGBM model, the test R-squared is also higher (5.17% vs. 5.04%) but to a lesser extent than for the GLM.
+- In this example, the bias from ignoring grouping structure is not large.
 
 ## Example: Simulation
 
@@ -266,10 +267,10 @@ p <- 10
 
 set.seed(1)
 
-df <- rnorm(n * p) %>% 
-  matrix(ncol = p) %>% 
-  as.data.frame() %>%
-  mutate(y = rnorm(n), group = 1:n) %>% 
+df <- rnorm(n * p) |>
+  matrix(ncol = p) |>
+  as.data.frame() |>
+  mutate(y = rnorm(n), group = 1:n) |>
   select(group, y, everything())
 df[1:5, 1:5]
 
@@ -327,9 +328,9 @@ for (prop in dims$prop) {
 }
 
 # 5) Visualization
-as.data.frame.table(res) %>% 
+as.data.frame.table(res) |>
   ggplot(aes(x = as.numeric(as.character(prop)), y = Freq, color = splittype)) +
-  geom_line(size = 1.5) + 
+  geom_line(linewidth = 1.5) + 
   facet_grid(model ~ datapart) +
   theme_bw(base_size = 16) +
   theme(legend.position = c(0.2, 0.8), legend.title = element_blank()) +
@@ -412,8 +413,8 @@ To compare the results of permutation importance with those from a model-specifi
 
 ```{r}
 # Split gain importance regarding Poisson deviance
-fit_lgb %>% 
-  lgb.importance() %>% 
+fit_lgb |>
+  lgb.importance() |>
   lgb.plot.importance()
 ```
 
@@ -476,19 +477,19 @@ with_seed(3,
   indices <- sample(1:nrow(test), 200) 
 )
 
-light_ice(fls, v = "DrivAge", indices = indices) %>% 
+light_ice(fls, v = "DrivAge", indices = indices) |>
   plot(alpha = 0.1, color = fillc) +
   labs(y = "Frequency", title = "ICE plot of 'DrivAge'")
 
-light_ice(fls, v = "DrivAge", indices = indices, center = "middle") %>% 
+light_ice(fls, v = "DrivAge", indices = indices, center = "middle") |>
   plot(alpha = 0.03, color = fillc) +
   labs(y = "Frequency (centered)", title = "c-ICE plot of 'DrivAge'")
 
-light_ice(fls_log, v = "DrivAge", indices = indices) %>% 
+light_ice(fls_log, v = "DrivAge", indices = indices) |>
   plot(alpha = 0.1, color = fillc) +
   labs(y = "log frequency", title = "ICE plot of 'DrivAge' (log scale)")
 
-light_ice(fls_log, v = "DrivAge", indices = indices, center = "middle") %>% 
+light_ice(fls_log, v = "DrivAge", indices = indices, center = "middle") |>
   plot(alpha = 0.03, color = fillc) +
   labs(y = "log frequency (centered)", title = "c-ICE plot of 'DrivAge' (log scale)")
 ```
@@ -505,7 +506,7 @@ The pointwise average of many ICE curves is called a *partial dependence plot* (
 $$
   \text{PD}_j(v) = \frac{1}{n} \sum_{i = 1}^n \hat m(v, \boldsymbol x_{i,\setminus j}),
 $$
-where $\boldsymbol x_{i,\setminus j}$ denotes the feature vector without $j$-th component of observation $i$ in some reference dataset, often the training or the test data. In modeling situations involving case weights, the arithmetic average is replaced by a corresponding weighted average.
+where $\boldsymbol x_{i,\setminus j}$ denotes the feature vector without $j$-th component of observation $i$ in some reference dataset, often the training or the test data. In modeling situations involving case weights, the arithmetic average is replaced by a corresponding weighted average. $\text{PD}_j(v)$ serves as estimate of $\mathbb E_{\boldsymbol X_{\setminus j}}m(v, \boldsymbol X_{\setminus j})$ . The expectation runs over the joint marginal distribution of $\boldsymbol X_{\setminus j}$, i.e., of all features except the $j$-th component.
 
 The corresponding PDP represents the graph $(v, \text{PD}_j(v))$ for a grid of values $v \in \mathbb R$.
 
@@ -515,7 +516,7 @@ The algorithm (in pseudocode) for evaluating the partial dependence function for
 
 Sometimes two-dimensional partial dependence plots of the features $X^{(j)}$ and $X^{(k)}$ are to be studied. Then, the corresponding empirical partial dependence function is given by
 $$
-  \text{PD}_{jk}(v_j, v_k) = \frac{1}{n} \sum_{i = 1}^n m(v_j, v_k, \boldsymbol x_{i,\setminus \{j, k\}}),
+  \text{PD}_{jk}(v_j, v_k) = \frac{1}{n} \sum_{i = 1}^n \hat m(v_j, v_k, \boldsymbol x_{i,\setminus \{j, k\}}),
 $$
 where $\boldsymbol x_{i,\setminus \{j, k\}}$ is the feature vector of observation $i$ without the $j$-th and $k$-th components. We will need this construction later in the section on interaction strength.
 
@@ -526,7 +527,7 @@ Let us now study the (exposure-weighted) partial dependence plots for all featur
 ```{r}
 # Each partial dependence plot corresponds to the average of 1000 ICE curves
 for (v in most_important(imp)) {
-  pr <- light_profile(fls_log, v = v, n_bins = 25) %>% 
+  pr <- light_profile(fls_log, v = v, n_bins = 25) |>
     plot() + 
     labs(y = "log frequency", color = "Model", title = sprintf("PDP of '%s'", v))
   print(pr)
@@ -568,23 +569,21 @@ In addition to ICE plots and PDPs, classic diagnostic regression plots (adapted 
 Let us now consider these three types of plots for the covariate "DrivAge" evaluated on the hold-out data:
 
 ```{r}
-labs1 <- function(what) {
-  labs(title = paste(what, "vs. covariate plot of 'DrivAge'"), 
+light_profile(fls, v = "DrivAge", type = "response") |>
+  plot() +
+  labs(title = paste("Response vs. covariate plot of 'DrivAge'"), 
        color = "Model", y = "Frequency")
-} 
 
-light_profile(fls, v = "DrivAge", type = "response") %>% 
+light_profile(fls, v = "DrivAge", type = "predicted") |>
   plot() +
-  labs1("Response")
+  labs(title = paste("Predicted vs. covariate plot of 'DrivAge'"), 
+       color = "Model", y = "Frequency")
 
-light_profile(fls, v = "DrivAge", type = "predicted") %>% 
-  plot() +
-  labs1("Predicted")
-
-light_profile(fls, v = "DrivAge", type = "residual") %>% 
+light_profile(fls, v = "DrivAge", type = "residual") |>
   plot() +
   geom_hline(yintercept = 0) +
-  labs1("Residual")
+  labs(title = paste("Residuals vs. covariate plot of 'DrivAge'"), 
+       color = "Model", y = "Frequency")
 ```
 
 **Comments**:
@@ -617,8 +616,8 @@ $$
 
 ### Remarks
 
-- There is also a version of Friedman's $H$ that summarizes total interaction strength associated with a single covariate $X^{(j)}$ as well as versions for interactions of order higher than two, see @friedman2008.
-- One way to visualize the interaction between two covariates, keeping everything else fixed, is to study two-dimensional partial dependence plots or, alternatively, a one-dimensional partial dependence plot stratified by the other variable.
+- There is also a version of Friedman's $H$ that summarizes total interaction strength associated with a single covariate $X^{(j)}$ as well as versions for interactions of order higher than two, see @friedman2008 or the Github project [hstats](https://github.com/mayer79/hstats).
+- One way to visualize the interaction between two covariates, keeping everything else fixed, is to study two-dimensional partial dependence plots or, alternatively, stratified partial dependence or ICE plots.
 - In the section on "SHAP" we will see another way to identify interactions.
 - Algorithmically, calculating Friedman's $H$ for all variable pairs is computationally demanding. Thus, it often makes sense to consider only interactions between important variables.
 - In order to ensure that additive models get $H$ and $\tilde H$ of 0, one typically works with predictions on the link scale.
@@ -627,6 +626,7 @@ $$
 
 - Pro: Better than nothing.
 - Con: Difficult to calculate.
+- Con: Inherits problematic aspects of partial dependence.
 - Con: Does not show *how* variables are interacting.
 
 ### Example
@@ -670,14 +670,12 @@ plot(interact_abs, color = "black", fill = fillc) +
   labs(title = "Absolute interaction strength", y = "H tilde")
 
 # Visualization of strong interaction by studying a stratified PDP
-light_profile(
-    fls_log, v = "VehAge", by = "VehBrand", pd_evaluate_at = 0:11, pd_seed = 50
-  ) %>%
+light_profile(fls_log, v = "VehAge", by = "VehBrand", pd_evaluate_at = 0:11) |>
   plot() +
   labs(y = "log frequency", title = "PDP of 'VehAge' stratified by 'VehBrand'")
 
 # Alternatively, we can also consider 2D PDP
-light_profile2d(fls_log, v = c("VehAge", "VehBrand"), pd_seed = 50) %>% 
+light_profile2d(fls_log, v = c("VehAge", "VehBrand")) |>
   plot() +
   labs(fill = "log frequency", title = "2D PDP of 'VehAge' and 'VehBrand'")
 ```
@@ -755,28 +753,24 @@ fl_glm_imp <- flashlight(
 )
 
 fls_imp <- multiflashlight(
-  list(fl_glm, fl_glm_imp, fl_gam, fl_lgb), 
-  data = test, 
-  y = y, 
-  w = w, 
-  metrics = metrics
+  list(fl_glm, fl_glm_imp, fl_gam, fl_lgb), data = test, y = y, w = w, metrics = metrics
 )
 
 # Version on link scale
 fls_log_imp <- multiflashlight(fls_imp, linkinv = log)
 
 # Performance
-fls_imp %>% 
-  light_performance() %>% 
+fls_imp |>
+  light_performance() |>
   plot(fill = fillc) + 
   labs(title = "Performance on test data", x = "Model", y = "Score")
 
 # Effects: some partial dependence plots on link scale
-light_profile(fls_log_imp, v = "VehAge", evaluate_at = c(0:11)) %>% 
+light_profile(fls_log_imp, v = "VehAge", evaluate_at = c(0:11)) |>
   plot() + 
   labs(title = "PDP of 'VehAge'", color = "Model", y = "log frequency")
 
-light_profile(fls_log_imp, v = "DrivAge", n_bins = 25) %>% 
+light_profile(fls_log_imp, v = "DrivAge", n_bins = 25) |>
   plot() + 
   labs(title = "PDP of 'DrivAge'", color = "Model", y = "log frequency")
 
@@ -785,14 +779,14 @@ with_seed(3,
   indices <- sample(1:nrow(test), 200) 
 )
 
-fls_log_imp %>% 
+fls_log_imp |>
   light_ice(
     v = "VehAge", 
     indices = indices, 
     center = "middle", 
     by = "VehBrand", 
     evaluate_at = c(0:11)
-  ) %>% 
+  ) |>
   plot(alpha = 0.1) +
   labs(title = "c-ICE plot of 'VehAge' on log scale", y = "log frequency")
 ```
@@ -808,6 +802,8 @@ fls_log_imp %>%
 SHAP (**SH**apley **A**dditive Ex**P**lanations) is the key player in explaining a ML model locally, i.e., around a single observation. It was introduced in @lundberg2017 and has since received much attention, not only when working with tabular data but also with unstructured data like text or images. The basic idea of SHAP is to decompose a model prediction into additive contributions of the features in a fair way. Repeating this process for many observations provides a powerful method for explaining the model as a whole. The roots of the method goes back to a classic result on cooperative game theory [@shapley1953]. Thus, and in contrast to many other local explainability methods, SHAP is based on a solid theoretic foundation.
 
 Another important local technique is LIME (Local Interpretable Model-Agnostic Explanations, @ribeiro2016), primarily used for models with unstructured input like text or image data. It works as follows: An artificial dataset is created with feature values slightly different from those of the observation to be explained. Its predictions are then regressed on a simplified feature space by a white-box surrogate model, such as linear regression, assigning higher weights to more similar observations. This surrogate model provides a local interpretation of the original model in the neighborhood of the selected observation.
+
+For more details on SHAP, see @mayer2023.
 
 ## Shapley values
 
@@ -885,13 +881,13 @@ Throughout this section, we will use the claims frequency model fitted with boos
 
 What is the SHAP decomposition for the first observation?
 
-```{r, dev = "svg"}
+```{r}
 library(shapviz)
 
 # Calculate SHAP decomposition for first observation
 train_1 <- train[1, x]
 shp <- shapviz(fit_lgb, X_pred = data.matrix(train_1[x]), X = train_1)
-shp
+summary(shp)
 
 # Two typical visualizations
 sv_waterfall(shp) +
@@ -947,9 +943,9 @@ with_seed(536,
 system.time(
   shp <- shapviz(fit_lgb, X_pred = data.matrix(train_small[x]), X = train_small)  
 )
-print(shp, n = 5)
+summary(shp)
 
-sv_importance(shp) +
+sv_importance(shp, show_numbers = TRUE) +
   ggtitle("SHAP importance plot")
 
 sv_importance(shp, kind = "beeswarm") +
@@ -974,7 +970,7 @@ $$
 How does the dependence plot of feature "VehAge" looks like?
 
 ```{r}
-sv_dependence(shp, "VehAge", alpha = 0.5, jitter_width = 0.1) +
+sv_dependence(shp, "VehAge", color_var = NULL) +
   ggtitle("SHAP dependence plot of 'VehAge'")
 ```
 
@@ -996,7 +992,7 @@ At least two approaches are common to study interaction effects using SHAP:
 Using Approach 2, we now highlight a strongly interacting feature on the color axis.
 
 ```{r}
-sv_dependence(shp, "VehAge", color_var = "auto", alpha = 0.5, jitter_width = 0.1) +
+sv_dependence(shp, "VehAge", alpha = 0.4) +
   ggtitle("SHAP dependence plot of 'VehAge' with color axis")
 ```
 
@@ -1023,14 +1019,12 @@ with_seed(536,
 shp <- shapviz(fit_lgb, X_pred = data.matrix(train_small[x]), X = train_small)
 
 # SHAP importance plot
-sv_importance(shp)  +
+sv_importance(shp, show_numbers = TRUE)  +
   ggtitle("SHAP importance plot")
 
 # Dependence plots in decreasing order of importance
-for (v in names(sv_importance(shp, kind = "no")))
-  (sv_dependence(shp, v, color_var = "auto", alpha = 0.5) +
-     ggtitle(sprintf("SHAP dependence plot of '%s'", v))) %>% 
-  print()
+sv_dependence(shp, v = names(sv_importance(shp, kind = "no")), alpha = 0.5) +
+  plot_layout(ncol = 2)
 ```
 
 **Comments:**
@@ -1100,11 +1094,12 @@ library(xgboost)
 library(MetricsWeighted)
 library(flashlight)
 library(shapviz)
+library(patchwork)
 
 data(dataCar)
 
 # Data preparation
-prep <- dataCar %>% 
+prep <- dataCar |>
   mutate(
     Freq = numclaims / exposure,
     Sev = claimcst0 / numclaims,
@@ -1133,9 +1128,7 @@ fit_rf <- ranger(
 
 # XGBoost
 dtrain <- xgb.DMatrix(
-  data.matrix(train[, x_vars]), 
-  label = train[[y_var]], 
-  weight = train[[w_var]]
+  data.matrix(train[, x_vars]), label = train[[y_var]], weight = train[[w_var]]
 )
 
 # Hyperparameters
@@ -1156,27 +1149,26 @@ with_seed(345,
 ```
 
 1. Performance
-    i. Calculate weighted average Poisson deviances of the three models both on the training data as well as on the test data. What do you observe?
+    i. Calculate weighted average Poisson deviances of the three models both on the training data as well as on the test data. What do you observe? Hint: You may use the {MetricsWeighted} package.
     ii. By how much percentage points are the test deviances better than an intercept-only model?
 2. Variable importance
     i. How is permutation importance of a feature $X^{(j)}$ being calculated with respect to weighted Poisson deviance on the test data?
     ii. Identify the two most important features per model according to this measure.
     iii. What are the advantages/disadvantages when repeating the permutation importance calculation multiple times?
 3. Effects
-    i. Study partial dependence plots of all features and models on the frequency scale.
-    ii. Select an important feature and study its centered ICE plots on the frequency scale. Why do the plots show interaction effects for all models?
-    iii. According to squared Friedman's H: Between which two variable pairs does the XGBoost model detect the strongest interactions?
-    iv. Optional: Do you see a way how to measure interaction strength from a centered ICE plot?
-4.  Use the insights of above exercises to improve the GLM. Explain your changes and evaluate the modified GLM. For simplicity, do not add interaction effects.
-5. Partial dependence
-    i. Write an R function `partial_dependence(data, v, model, pred_fun, ...)` that creates a partial dependence plot for variable `v`. `data` is the reference data, `v` the column name of the variable to trace, `model` the fitted model, and finally `pred_fun` the prediction function taking the model and a data set like `data` as arguments.
-    ii. Modify your function to allow an additional argument `w`, specifying a vector of case weights used to create a weighted partial dependence plot. Do you get approximately the same as in Exercise 3i?
+    i. Study centered ICE plots of feature "agecat" on the frequency scale. Why do the plots show interaction effects for all models?
+    ii. Study partial dependence plots of all features and models on the frequency scale.
     iii. Show that the coefficient $\hat \beta_j$ of covariate $X^{(j)}$ in a linear regression model 
     $$
     \hat m(\boldsymbol x) = \hat \beta_o + \hat \beta_1 x^{(1)} + \dots + \hat \beta_p x^{(p)}
     $$
     equals the slope of the partial dependence line of $X^{(j)}$.
-6.  SHAP (use only the XGBoost model here)
+    iv. Optional. Write an R function `partial_dependence(data, v, model, pred_fun, ...)` that creates a partial dependence plot for variable `v`. `data` is the reference data, `v` the column name of the variable to trace, `model` the fitted model, and finally `pred_fun` the prediction function taking the model and a data set like `data` as arguments.
+    v. Optional. Modify your function to allow an additional argument `w`, specifying a vector of case weights used to create a weighted partial dependence plot. Do you get similar results than in ii?
+    vi. According to squared Friedman's H: Between which two variable pairs does the XGBoost model detect the strongest interactions?
+4.  Improve GLM
+    Use the insights of above exercises to improve the GLM. Explain your changes and evaluate the modified GLM. For simplicity, do not add interaction effects.
+5.  SHAP (use only the XGBoost model here)
     i. Search two observations with similar predictions, but relatively different feature values. Compare their waterfall plots.
     ii. Perform a SHAP analysis and summarize your findings in a compact way.
     iii. Can you improve the original GLM based on these insights?

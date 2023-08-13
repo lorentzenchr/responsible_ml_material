@@ -64,6 +64,7 @@ grid <- expand.grid(
   bagging_fraction = c(0.8, 1),
   lambda_l1 = c(0, 4),
   lambda_l2 = c(0, 2.5, 5, 7.5),
+  # poisson_max_delta_step = c(0.1, 0.7),  # should try with Poisson objective
   num_threads = 7,
   stringsAsFactors = FALSE
 )

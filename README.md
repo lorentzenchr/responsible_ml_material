@@ -49,6 +49,7 @@ Tobias Fissler, Christian Lorentzen, and Michael Mayer. “Model Comparison and 
 ### Explainability
 
 - C. Lorentzen and M. Mayer. “Peeking into the Black Box: An Actuarial Case Study for Interpretable Machine Learning”. In: SSRN Manuscript ID 3595944 (2020). [doi: 10.2139/ssrn.3595944](https://doi.org/10.2139/ssrn.3595944).
+- M. Mayer, D. Meier, and M. V. Wüthrich. “SHAP for Actuaries: Explain Any Model”. In: SSRN Manuscript ID 4389797 (2023) [doi: 10.2139/ssrn.4389797](https://doi.org/http://dx.doi.org/10.2139/ssrn.4389797).
 - Christoph Molnar. Interpretable Machine Learning. 1st ed. Raleigh, North Carolina: Lulu.com, 2019. isbn: 978-0-244-76852-2. url: https://christophm.github.io/interpretable-ml-book
 
 ### Books on responsible ML or AI
