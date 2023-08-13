@@ -88,7 +88,7 @@ for (i in seq_len(grid_size)) {  # i <- 1
 }
 
 # Load and sort grid
-grid <- readRDS(grid_file) %>%
+grid <- readRDS(grid_file) |>
   arrange(cv_score)
 head(grid)
 
