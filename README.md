@@ -37,7 +37,7 @@ Tobias Fissler, Christian Lorentzen, and Michael Mayer. “Model Comparison and 
 - You can use them to go through the code step by step. The first time you run each script, you need to set `refit = TRUE`. It will fit and save the models. After this, simply use `refit = FALSE` to save time.
 - The section "Improving Explainability" requires Keras/TensorFlow. To run this code, you will need a Python/TensorFlow installation. Follow [these instructions](https://tensorflow.rstudio.com/reference/keras/install_keras).
 - Use up-to-date versions of these CRAN packages: tidyverse, lubridate, splitTools, withr, caret, mgcv, ranger, lightgbm, xgboost, MetricsWeighted, flashlight, shapviz, patchwork, OpenML, farff, insuranceData, keras. For visualizing neural nets, we also need the Github package "deepviz".
-- **Update**: @fhehli has kindly converted the .Rmd files into Jupyter notebooks as per Oct. 25, 2023 in this (PR)[https://github.com/lorentzenchr/responsible_ml_material/pull/8]. They are not part of the official documentation.
+- **Update**: @fhehli has kindly converted the .Rmd files into Jupyter notebooks .ipynb) as per Oct. 25, 2023 in this [PR](https://github.com/lorentzenchr/responsible_ml_material/pull/8). They are not part of the official documentation, but might help depending on your preferred IDE.
 
 ## Additional Literature
 
