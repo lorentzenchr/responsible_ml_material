@@ -11,7 +11,7 @@
 
 <meta name="author" content="Michael Mayer" />
 
-<meta name="date" content="2023-08-13" />
+<meta name="date" content="2023-10-14" />
 
 <title>XAI: Introduction</title>
 
@@ -2904,7 +2904,7 @@ border-radius: 0px;
 <h3 class="subtitle">Responsible Machine Learning with Insurance
 Applications</h3>
 <h4 class="author">Michael Mayer</h4>
-<h4 class="date">2023-08-13</h4>
+<h4 class="date">2023-10-14</h4>
 
 </div>
 
@@ -3274,7 +3274,7 @@ library(farff)
 main &lt;- &quot;french_motor&quot;
 # main &lt;- &quot;r/french_motor&quot;
 fillc &lt;- &quot;#E69F00&quot;
-refit &lt;- FALSE
+refit &lt;- TRUE  # Set to FALSE after first run
 
 if (refit) {
   # Download and save dataset
@@ -3522,9 +3522,14 @@ if (refit) {
   lgb.save(fit_lgb, file.path(main, &quot;fit_lgb.txt&quot;))
 } else{
   fit_lgb &lt;- lgb.load(file.path(main, &quot;fit_lgb.txt&quot;))
-}
-
-# Save everything important
+}</code></pre>
+<pre><code>## [LightGBM] [Warning] Auto-choosing row-wise multi-threading, the overhead of testing was 0.005687 seconds.
+## You can set `force_row_wise=true` to remove the overhead.
+## And if memory is not enough, you can set `force_col_wise=true`.
+## [LightGBM] [Info] Total Bins 370
+## [LightGBM] [Info] Number of data points in the train set: 542170, number of used features: 7
+## [LightGBM] [Info] Start training from score -2.321650</code></pre>
+<pre class="r"><code># Save everything important
 if (refit) {
   save(x, y, w, fit_glm, fit_gam, prep, train, test, fillc, 
        file = file.path(main, &quot;intro.RData&quot;))
