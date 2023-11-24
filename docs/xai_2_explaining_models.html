@@ -11,7 +11,7 @@
 
 <meta name="author" content="Michael Mayer" />
 
-<meta name="date" content="2023-08-13" />
+<meta name="date" content="2023-11-23" />
 
 <title>XAI: Explaining Models</title>
 
@@ -2904,7 +2904,7 @@ border-radius: 0px;
 <h3 class="subtitle">Responsible Machine Learning with Insurance
 Applications</h3>
 <h4 class="author">Michael Mayer</h4>
-<h4 class="date">2023-08-13</h4>
+<h4 class="date">2023-11-23</h4>
 
 </div>
 
@@ -4169,17 +4169,17 @@ the full feature set <span class="math inline">\mathcal M</span>. Since
 models cannot simply “turn off” some features during prediction, the
 estimation of <span class="math inline">m(\mathbf x_\mathcal L)</span>
 is highly non-trivial, and there is some controversy (see e.g., <span class="citation">Sundararajan and Najmi (<a href="#ref-sundararajan2019">2019</a>)</span> or <span class="citation">Janzing, Minorics, and Bloebaum (<a href="#ref-janzing2020">2020</a>)</span>) whether to approximate it
-using marginal expectations <span class="math inline">\mathbb E_{\mathbf
-X_{\mathcal M \setminus \mathcal L}}(m(\boldsymbol X))</span> or
-conditional expectations <span class="math inline">\mathbb
-E(m(\boldsymbol X \mid \mathbf x_\mathcal L))</span>. The core question
-is: should the statistical dependence between features in <span class="math inline">\mathcal L</span> and features in <span class="math inline">\mathcal M \setminus \mathcal L</span> be broken
+using marginal expectations <span class="math inline">\mathbb
+E(m(\mathbf x_{\mathcal L}, \mathbf X_{\mathcal M \setminus \mathcal
+L}))</span> or conditional expectations <span class="math inline">\mathbb E(m(\mathbf x_{\mathcal L}, \mathbf
+X_{\mathcal M \setminus \mathcal L}) \mid \mathbf X_{\mathcal L} =
+\mathbf x_\mathcal L))</span>. The core question is: should the
+statistical dependence between features in <span class="math inline">\mathcal L</span> and features in <span class="math inline">\mathcal M \setminus \mathcal L</span> be broken
 (marginal) or not (conditional)? The rules of causal inference require
 the former, while statistically, the latter would be more natural.</p>
 <p>There exist several algorithms to calculate SHAP values for an
 observation <span class="math inline">\mathbf x</span>. Three
-particularly important ones are the following (from very slow to very
-fast):</p>
+particularly important ones are the following:</p>
 <ul>
 <li><strong>Monte-Carlo sampling</strong> <span class="citation">(<a href="#ref-strumbelj2010">Štrumbelj and Kononenko 2010</a>)</span>: To
 calculate <span class="math inline">\phi_j</span> for a particular <span class="math inline">j</span>, the contributions <span class="math inline">m(\mathbf x_{\mathcal L \cup \{j\}}) - m(\mathbf
@@ -4200,7 +4200,7 @@ conditional expectations instead.</li>
 tailored for decision trees. It estimates <span class="math inline">m(\mathbf x_\mathcal L)</span> by a conditional
 expectation using a recursive (path-dependent) algorithm identical to a
 method for calculating exact partial dependence plots for decision trees
-in <span class="citation">Friedman (<a href="#ref-friedman2001">2001</a>)</span>, page 27. To evaluate
+in <span class="citation">Friedman (<a href="#ref-friedman2001">2001</a>)</span>, page 1221. To evaluate
 Shapley’s formula, the basic algorithm must be applied to each <span class="math inline">\mathcal L \subseteq \mathcal M</span> and is
 therefore exponentially slow in <span class="math inline">p</span>.
 Fortunately, the algorithm has been implemented in a way that evaluates
@@ -4349,7 +4349,7 @@ system.time(
   shp &lt;- shapviz(fit_lgb, X_pred = data.matrix(train_small[x]), X = train_small)  
 )</code></pre>
 <pre><code>##        User      System verstrichen 
-##        6.86        0.00        0.97</code></pre>
+##        9.24        0.00        1.35</code></pre>
 <pre class="r"><code>summary(shp)</code></pre>
 <pre><code>## &#39;shapviz&#39; object representing 
 ##   - SHAP matrix of dimension 2000 x 7 

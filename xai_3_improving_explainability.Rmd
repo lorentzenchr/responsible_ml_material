@@ -128,7 +128,7 @@ The first approach produces additive models. The second approach is more general
 
 A *tree stump* is a decision tree with a single split. Its prediction function has the form $v_1 + (v_2 - v_1)\mathbb I(x^{(j)} \le s)$, where $\mathbb I$ is the indicator function, $s$ the split position of the selected variable $X^{(j)}$, and $v_1, v_2$ are the values of the left and right leaf. A boosted trees model with tree stumps $m_1, \dots, m_K$ as base learners (boosted tree stumps) is thus an additive model
 $$
-  m(\boldsymbol x) = \beta_o + f_1(x^{(1)}) + \dots + f_p(x^{(p)})
+  m(\boldsymbol x) = f_1(x^{(1)}) + \dots + f_p(x^{(p)})
 $$
 with piecewise constant functions $f_j$, $1 \le j \le p$. The function $f_j$ equals the sum of all $m_k$ that split on $X^{(j)}$. 
 
