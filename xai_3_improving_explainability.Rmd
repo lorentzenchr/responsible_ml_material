@@ -291,14 +291,18 @@ In practice, the usefulness and trustworthiness of a model can drop dramatically
 - A claims severity model for car collisions is expected to be monotonically increasing in the car value, everything else being fixed.
 - A claims frequency model for car collisions is expected to be monotonically decreasing in the deductible, Ceteris Paribus.
 
-How do monotonic constraints work? To enforce monotonicity for the $j$th feature in a decision tree, the rule is as follows: A candidate split that violates the condition on its child nodes receives an infinite penalty (or *negative* split gain) and is therefore discarded (Scheme 3a). Node values of child nodes are capped at the average node values of the constraining split to avoid violation of monotonicity, see Scheme 3b.
+How do monotonic constraints work? To enforce monotonicity for the $j$th feature in a decision tree, the rules are as follows: 
+
+1. A candidate split that violates the condition on its child nodes receives an infinite penalty (or *negative* split gain) and is therefore discarded (Scheme 3a). This enforces monotonicity at this split.
+2. To enforce monotonicity also for splits further down the tree, values of child (and grand-child etc.) nodes are capped at the average node values of the constraining split, see Scheme 3b. Capping may introduce a certain amount of bias.
 
 In Scheme 3a, Tree A represents a prediction function (on log claims frequency scale) that is monotonically decreasing in the vehicle age. The split on the lower left of Tree B violates this constraint and is discarded (and replaced by some other split).
 
-![Scheme 3a: Monotonic constraints](figs/monotonic.jpg)
-Scheme 3b explains how node values of subsequent splits are capped to enforce monotonicity (all credits to Samuel Flückiger, thank you!):
+![Scheme 3a: Monotonic constraints - basic logic](figs/monotonic.jpg)
 
-![Scheme 3b: Monotonic constraints](figs/monotonic_samuel_flueckiger.png)
+Scheme 3b explains how node values of subsequent splits are capped to enforce monotonicity downstream:
+
+![Scheme 3b: Monotonic constraints - capping explained](figs/monotonic_capping.png)
 
 Remarks: 
 
