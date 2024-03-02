@@ -27,17 +27,24 @@ Tobias Fissler, Christian Lorentzen, and Michael Mayer. “Model Comparison and 
 
 ### Lecture notes
 
+Note that the Python and R outputs differ.
+
+Python notebooks (ipynb)
+
+1. [Introduction](py/xai_1_introduction.ipynb)
+2. [Explaining Models](py/xai_2_explaining_models.ipynb)
+3. [Improving Explainability](py/xai_3_improving_explainability.ipynb)
+
+R output (HTML)
+
 1. [Introduction](https://lorentzenchr.github.io/responsible_ml_material/xai_1_introduction.html)
 2. [Explaining Models](https://lorentzenchr.github.io/responsible_ml_material/xai_2_explaining_models.html)
 3. [Improving Explainability](https://lorentzenchr.github.io/responsible_ml_material/xai_3_improving_explainability.html)
 
-#### Remarks
+#### Setup
 
-- The .rmd files in the main folder produce the linked html output in "docs/". 
-- You can use them to go through the code step by step. The first time you run each script, you need to set `refit = TRUE`. It will fit and save the models. After this, simply use `refit = FALSE` to save time.
-- The section "Improving Explainability" requires Keras/TensorFlow. To run this code, you will need a Python/TensorFlow installation. Follow [these instructions](https://tensorflow.rstudio.com/reference/keras/install_keras).
-- Use up-to-date versions of these CRAN packages: tidyverse, lubridate, splitTools, withr, caret, mgcv, ranger, lightgbm, xgboost, MetricsWeighted, flashlight, shapviz, patchwork, OpenML, farff, insuranceData, keras. For visualizing neural nets, we also need the Github package "deepviz".
-- **Update**: @fhehli has kindly converted the .Rmd files into Jupyter notebooks (.ipynb) as per Oct. 25, 2023 in this [PR](https://github.com/lorentzenchr/responsible_ml_material/pull/8). They are not part of the official documentation, but might help depending on your preferred IDE.
+- Python: We use Python 3.11 and the packages specified [here](py/requirements.txt).
+- R: We use R 4.3 and up-to-date versions of tidyverse, lubridate, splitTools, withr, caret, mgcv, ranger, lightgbm, xgboost, MetricsWeighted, hstats, shapviz, patchwork, OpenML, farff, insuranceData, keras. For visualizing neural nets, we also need the Github package "deepviz". Follow [these instructions](https://tensorflow.rstudio.com/reference/keras/install_keras) for how to install keras with TensorFlow.
 
 ## Additional Literature
 
