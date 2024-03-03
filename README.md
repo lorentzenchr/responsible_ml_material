@@ -19,6 +19,8 @@ From time to time, we will update the material linked below. You can also clone 
 
 Tobias Fissler, Christian Lorentzen, and Michael Mayer. “Model Comparison and Calibration Assessment: User Guide for Consistent Scoring Functions in Machine Learning and Actuarial Practice”. In: (2022). [doi: 10.48550/ARXIV.2202.12780](https://doi.org/10.48550/ARXIV.2202.12780)
 
+[Python and R code for the tutorial](https://github.com/actuarial-data-science/Tutorials/tree/master/11%20-%20Model%20Comparison%20and%20Calibration%20Assessment)
+
 ## Michael's Material
 
 ### Slides
