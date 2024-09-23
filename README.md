@@ -29,25 +29,17 @@ Tobias Fissler, Christian Lorentzen, and Michael Mayer. “Model Comparison and 
 
 ### Lecture notes
 
-Note that the Python and R outputs differ.
-
 Python notebooks (ipynb)
 
 1. [Introduction](py/xai_1_introduction.ipynb)
 2. [Explaining Models](py/xai_2_explaining_models.ipynb)
 3. [Improving Explainability](py/xai_3_improving_explainability.ipynb)
 
-R output (HTML)
-
-1. [Introduction](https://lorentzenchr.github.io/responsible_ml_material/xai_1_introduction.html)
-2. [Explaining Models](https://lorentzenchr.github.io/responsible_ml_material/xai_2_explaining_models.html)
-3. [Improving Explainability](https://lorentzenchr.github.io/responsible_ml_material/xai_3_improving_explainability.html)
-
 #### Setup
 
 Python: We use Python 3.11 and the packages specified [here](py/requirements.txt).
 
-(Note for R users: We use R 4.3 and the packages loaded in the notebooks.)
+(Note for R users: You can work with R >= 4.3 and the packages loaded in the notebooks.)
 
 ## Additional Literature
 
