@@ -45,8 +45,9 @@ R output (HTML)
 
 #### Setup
 
-- Python: We use Python 3.11 and the packages specified [here](py/requirements.txt).
-- R: We use R 4.3 and up-to-date versions of tidyverse, lubridate, splitTools, withr, caret, mgcv, ranger, lightgbm, xgboost, MetricsWeighted, hstats, shapviz, patchwork, OpenML, farff, insuranceData, keras. For visualizing neural nets, we also need the Github package "deepviz". Follow [these instructions](https://tensorflow.rstudio.com/reference/keras/install_keras) for how to install keras with TensorFlow.
+Python: We use Python 3.11 and the packages specified [here](py/requirements.txt).
+
+(Note for R users: We use R 4.3 and the packages loaded in the notebooks.)
 
 ## Additional Literature
 
