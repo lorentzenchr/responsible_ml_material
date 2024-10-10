@@ -1,9 +1,9 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.base import RegressorMixin, BaseEstimator, TransformerMixin
-from sklearn.utils.validation import check_is_fitted
+from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
 from sklearn.metrics import mean_poisson_deviance
+from sklearn.utils.validation import check_is_fitted
 
 
 def get_coefs(model):
@@ -17,7 +17,7 @@ def get_coefs(model):
 def poisson_scorer(names, models, X, y, w, reference_model):
     """Calculates mean Poisson deviance and corresponding pseudo R-squared."""
 
-    perf = dict()
+    perf = {}
     deviance_0 = mean_poisson_deviance(y, reference_model.predict(X), sample_weight=w)
     for name, model in zip(names, models):
         deviance = mean_poisson_deviance(y, model.predict(X), sample_weight=w)
@@ -41,7 +41,8 @@ def plot_scores(scores, title=None):
 
 class LogRegressor(RegressorMixin):
     """
-    A wrapper class for a Scikit-Learn regressor that evaluates predictions on a log scale.
+    A wrapper class for a Scikit-Learn regressor that evaluates predictions
+    on a log scale.
 
     Parameters
     ----------
@@ -124,7 +125,7 @@ class ColumnSplitter(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        out = dict()
+        out = {}
         for key, value in self._feature_dict.items():
             out[key] = X[value].to_numpy()
         return out
