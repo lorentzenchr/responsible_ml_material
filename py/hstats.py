@@ -8,7 +8,6 @@ import itertools
 
 import numpy as np
 from scipy import sparse
-
 from sklearn.base import is_classifier, is_regressor
 from sklearn.utils import Bunch, check_array
 from sklearn.utils._indexing import _get_column_indices, _safe_assign, _safe_indexing
@@ -21,6 +20,7 @@ from sklearn.utils._param_validation import (
 )
 from sklearn.utils.random import sample_without_replacement
 from sklearn.utils.validation import _check_sample_weight, check_is_fitted
+from numpy.exceptions import AxisError
 
 
 def _calculate_pd_brute_fast(
@@ -79,7 +79,7 @@ def _calculate_pd_over_data(
         )
         grid = _safe_indexing(grid, ix, axis=0)
         compressed_grid = True
-    except (TypeError, np.AxisError):
+    except (TypeError, AxisError):
         compressed_grid = False
 
     pd_values = _calculate_pd_brute_fast(
