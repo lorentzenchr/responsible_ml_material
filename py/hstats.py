@@ -77,6 +77,7 @@ def _calculate_pd_over_data(
         _, ix, ix_reconstruct = np.unique(
             grid, return_index=True, return_inverse=True, axis=ax
         )
+        ix, ix_reconstruct = ix.squeeze(), ix_reconstruct.squeeze()  # squeeze to 1D
         grid = _safe_indexing(grid, ix, axis=0)
         compressed_grid = True
     except (TypeError, AxisError):
