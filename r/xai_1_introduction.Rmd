@@ -389,7 +389,7 @@ params <- list(
   min_split_loss = 0,
   max_delta_step = 0.1  # with Poisson
 )
-nrounds <- 304
+nrounds <- 157
 ```
 
 1. Descriptive Analysis
