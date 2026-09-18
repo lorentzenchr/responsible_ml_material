@@ -8,8 +8,8 @@ dtrain <- xgb.DMatrix(data.matrix(X_train), label = y_train)
 # Build interaction constraint vector
 additive <- c("Female", "DateNum")
 ic <- c(
-  list(which(!(x_vars %in% additive)) - 1),
-  as.list(which(x_vars %in% additive) - 1)
+  list(which(!(xvars %in% additive)) - 1),
+  as.list(which(xvars %in% additive) - 1)
 )
 ic
 
@@ -59,7 +59,7 @@ if (grid_size > max_size) {
 }
 
 # Loop over grid and fit XGB with five-fold CV and early stopping
-grid_file <- file.path(main, "grid_xgb_partly_additive.rds")
+grid_file <- file.path("r/workers_compensation", "grid_xgb_partly_additive.rds")
 
 pb <- txtProgressBar(0, grid_size, style = 3)
 for (i in seq_len(grid_size)) {  # i <- 1
@@ -75,8 +75,8 @@ for (i in seq_len(grid_size)) {  # i <- 1
   )
   
   # Store optimal number of boosting rounds and both the training and the CV score
-  grid[i, 1] <- cvm$best_iteration
-  grid[i, 2:3] <- cvm$evaluation_log[, c(4, 2)][cvm$best_iteration]
+  grid[i, 1] <- best_iteration <- cvm$early_stop$best_iteration
+  grid[i, 2:3] <- cvm$evaluation_log[, c(4, 2)][best_iteration]
   setTxtProgressBar(pb, i)
   
   # Save grid to survive hard crashs

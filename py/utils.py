@@ -14,7 +14,7 @@ def get_coefs(model):
     )
 
 
-def poisson_scorer(names, models, X, y, w, reference_model):
+def poisson_scorer(names, models, X, y, w, reference_model):  # noqa: PLR0917
     """Calculates mean Poisson deviance and corresponding pseudo R-squared."""
 
     perf = {}
@@ -39,7 +39,7 @@ def plot_scores(scores, title=None):
     fig.tight_layout()
 
 
-class LogRegressor(RegressorMixin):
+class LogRegressor(RegressorMixin, BaseEstimator):
     """
     A wrapper class for a Scikit-Learn regressor that evaluates predictions
     on a log scale.
@@ -59,18 +59,18 @@ class LogRegressor(RegressorMixin):
     """
 
     def __init__(self, estimator):
-        self._estimator = estimator
-        check_is_fitted(self._estimator)
+        self.estimator = estimator
+        check_is_fitted(self.estimator)
         self.is_fitted_ = True
 
     def fit(self, *args, **kwargs):
         return self
 
     def predict(self, X):
-        return np.log(self._estimator.predict(X))
+        return np.log(self.estimator.predict(X))
 
 
-class KerasRegressor(RegressorMixin):
+class KerasRegressor(RegressorMixin, BaseEstimator):
     """
     A wrapper class for a keras model.
 
@@ -89,17 +89,20 @@ class KerasRegressor(RegressorMixin):
     """
 
     def __init__(self, estimator):
-        self._estimator = estimator
+        self.estimator = estimator
         self.is_fitted_ = True
 
     def fit(self, *args, **kwargs):
         return self
 
     def predict(self, X):
-        return self._estimator.predict(X, verbose=0, batch_size=20_000).flatten()
+        # Bypass Pipeline.predict(): its kwarg routing calls __sklearn_tags__ on
+        # every step, which the raw Keras model does not implement
+        Xt = self.estimator[:-1].transform(X)
+        return self.estimator[-1].predict(Xt, verbose=0, batch_size=20_000).flatten()
 
 
-class ColumnSplitter(BaseEstimator, TransformerMixin):
+class ColumnSplitter(TransformerMixin, BaseEstimator):
     """
     Transformer that splits a pandas.Dataframe into a dict of numpy arrays.
 
@@ -119,13 +122,14 @@ class ColumnSplitter(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, feature_dict):
-        self._feature_dict = feature_dict
+        self.feature_dict = feature_dict
 
     def fit(self, X, y=None):
+        self.is_fitted_ = True
         return self
 
     def transform(self, X, y=None):
         out = {}
-        for key, value in self._feature_dict.items():
+        for key, value in self.feature_dict.items():
             out[key] = X[value].to_numpy()
         return out

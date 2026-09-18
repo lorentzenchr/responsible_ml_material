@@ -7,6 +7,7 @@ Requires scikit-learn >= 1.5
 import itertools
 
 import numpy as np
+from numpy.exceptions import AxisError
 from scipy import sparse
 from sklearn.base import is_classifier, is_regressor
 from sklearn.utils import Bunch, check_array
@@ -20,10 +21,9 @@ from sklearn.utils._param_validation import (
 )
 from sklearn.utils.random import sample_without_replacement
 from sklearn.utils.validation import _check_sample_weight, check_is_fitted
-from numpy.exceptions import AxisError
 
 
-def _calculate_pd_brute_fast(
+def _calculate_pd_brute_fast(  # noqa: PLR0917
     pred_fun, X, feature_indices, grid, sample_weight=None, reduce_binary=False
 ):
     """Fast version of _calculate_partial_dependence_brute()
@@ -77,6 +77,7 @@ def _calculate_pd_over_data(
         _, ix, ix_reconstruct = np.unique(
             grid, return_index=True, return_inverse=True, axis=ax
         )
+        ix, ix_reconstruct = ix.squeeze(), ix_reconstruct.squeeze()  # squeeze to 1D
         grid = _safe_indexing(grid, ix, axis=0)
         compressed_grid = True
     except (TypeError, AxisError):
@@ -240,16 +241,20 @@ def h_statistic(
     if is_regressor(estimator):
         pred_fun = getattr(estimator, "predict", None)
         if pred_fun is None:
-            raise ValueError("The regressor has no predict method")
+            msg = "The regressor has no predict method"
+            raise ValueError(msg)
     elif is_classifier(estimator):
         if isinstance(estimator.classes_[0], np.ndarray):
-            raise ValueError("Multiclass-multioutput estimators are not supported")
+            msg_0 = "Multiclass-multioutput estimators are not supported"
+            raise ValueError(msg_0)
         reduce_binary = len(estimator.classes_) == 2
         pred_fun = getattr(estimator, "predict_proba", None)
         if pred_fun is None:
-            raise ValueError("The classifier has no predict_proba method")
+            msg_1 = "The classifier has no predict_proba method"
+            raise ValueError(msg_1)
     else:
-        raise ValueError("'estimator' must be a regressor or classifier")
+        msg_2 = "'estimator' must be a regressor or classifier"
+        raise ValueError(msg_2)
 
     # Use check_array only on lists and other non-array-likes / sparse. Do not
     # convert DataFrame into a NumPy array.
@@ -276,17 +281,16 @@ def h_statistic(
         ).ravel()
 
     # CALCULATIONS
-    pd_univariate = []
-    for idx in feature_indices:
-        pd_univariate.append(
-            _calculate_pd_over_data(
-                pred_fun,
-                X=X,
-                feature_indices=[idx],
-                sample_weight=sample_weight,
-                reduce_binary=reduce_binary,
-            )
+    pd_univariate = [
+        _calculate_pd_over_data(
+            pred_fun,
+            X=X,
+            feature_indices=[idx],
+            sample_weight=sample_weight,
+            reduce_binary=reduce_binary,
         )
+        for idx in feature_indices
+    ]
 
     n_features = len(features)
     n_pairs = int(n_features * (n_features - 1) / 2)
